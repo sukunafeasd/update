@@ -1077,7 +1077,7 @@ body.sidebar-collapsed #channel-panel {
   flex: 1;
   min-width: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.8rem;
   padding: 0.95rem 1.05rem;
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
@@ -1113,10 +1113,10 @@ body.sidebar-collapsed #channel-panel {
 
 .topbar-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.55rem;
-  justify-content: flex-end;
-  align-content: flex-start;
+  justify-content: flex-start;
+  align-items: stretch;
 }
 
 .topbar-actions .btn {
@@ -1150,11 +1150,27 @@ body.sidebar-collapsed #channel-panel {
 }
 
 .topbar-actions {
+  width: 164px;
   padding: 0.9rem;
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 92%, transparent), var(--surface-soft));
   box-shadow: var(--shadow);
+}
+
+.topbar-utility-strip {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.topbar-utility-strip .btn {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0.56rem 0.8rem;
 }
 
 #room-dashboard {
@@ -2257,6 +2273,9 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .topbar-actions {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
     justify-content: stretch;
   }
 

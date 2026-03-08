@@ -475,6 +475,100 @@ func TestUpdateProfileSanitizesAvatarAndDisplayName(t *testing.T) {
 	}
 }
 
+func TestProfilePersistsAcrossLogoutAndLogin(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "panel-profile-persist.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	svc := NewService(store, filepath.Join(t.TempDir(), "uploads"))
+	if err := svc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	viewer, session, err := svc.Login(ownerUsername(), ownerPassword())
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+
+	updated, err := svc.UpdateProfile(viewer, "Dief Persistente", "bio salva", "cobalt", "#54b8ff", "", "away", "voltando ja")
+	if err != nil {
+		t.Fatalf("update profile: %v", err)
+	}
+	if err := svc.Logout(session.ID); err != nil {
+		t.Fatalf("logout owner: %v", err)
+	}
+
+	viewer, session, err = svc.Login(ownerUsername(), ownerPassword())
+	if err != nil {
+		t.Fatalf("relogin owner: %v", err)
+	}
+
+	bootstrap, err := svc.Bootstrap(viewer, session.ID)
+	if err != nil {
+		t.Fatalf("bootstrap owner after relogin: %v", err)
+	}
+	if bootstrap.Viewer.DisplayName != updated.DisplayName {
+		t.Fatalf("expected display name to persist, got %q", bootstrap.Viewer.DisplayName)
+	}
+	if bootstrap.Viewer.Bio != "bio salva" {
+		t.Fatalf("expected bio to persist, got %q", bootstrap.Viewer.Bio)
+	}
+	if bootstrap.Viewer.StatusText != "voltando ja" {
+		t.Fatalf("expected status text to persist, got %q", bootstrap.Viewer.StatusText)
+	}
+}
+
+func TestMessagePersistsAcrossLogoutAndLogin(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "panel-message-persist.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	svc := NewService(store, filepath.Join(t.TempDir(), "uploads"))
+	if err := svc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	viewer, session, err := svc.Login(ownerUsername(), ownerPassword())
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+
+	bootstrap, err := svc.Bootstrap(viewer, session.ID)
+	if err != nil {
+		t.Fatalf("bootstrap owner: %v", err)
+	}
+	room := findRoomBySlug(bootstrap.Rooms, "chat-geral")
+	if room.ID == 0 {
+		t.Fatalf("chat-geral not found")
+	}
+
+	body := "mensagem que precisa ficar viva"
+	message, err := svc.PostMessage(viewer, session.ID, room.ID, body, "text", nil, 0)
+	if err != nil {
+		t.Fatalf("post message: %v", err)
+	}
+	if err := svc.Logout(session.ID); err != nil {
+		t.Fatalf("logout owner: %v", err)
+	}
+
+	viewer, session, err = svc.Login(ownerUsername(), ownerPassword())
+	if err != nil {
+		t.Fatalf("relogin owner: %v", err)
+	}
+	messages, _, err := svc.ListMessages(viewer, session.ID, room.ID, 30)
+	if err != nil {
+		t.Fatalf("list messages after relogin: %v", err)
+	}
+	found := findMessageByID(messages, message.ID)
+	if found.ID == 0 || found.Body != body {
+		t.Fatalf("expected message to persist after relogin, got %+v", found)
+	}
+}
+
 func TestPanelPollCreateAndVoteFlow(t *testing.T) {
 	store, err := db.Open(filepath.Join(t.TempDir(), "panel-polls.db"))
 	if err != nil {
