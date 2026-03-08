@@ -140,7 +140,9 @@
     appInstalled: false,
     appInstallSeenAt: 0,
     susClicks: 0,
-    susPositionIndex: 0
+    susPositionIndex: 0,
+    desktopSidebarCollapsed: false,
+    desktopInspectorCollapsed: false
   };
 
   function readStoredSessionId() {
@@ -1911,18 +1913,24 @@
 
   function detectMobile() {
     var agent = String((window.navigator && window.navigator.userAgent) || "").toLowerCase();
+    var wasCompact = !!state.compactLayout;
     state.isMobile = window.innerWidth <= 820 || /android|iphone|ipad|mobile|opera mini|windows phone/.test(agent);
     state.compactLayout = state.isMobile || window.innerWidth <= 1080;
     document.body.classList.toggle("mobile", state.isMobile);
     document.body.classList.toggle("compact", state.compactLayout);
     if (state.compactLayout) {
-      document.body.classList.add("sidebar-collapsed");
-      document.body.classList.add("inspector-collapsed");
-      document.body.classList.remove("inspector-open");
+      if (!wasCompact) {
+        document.body.classList.remove("sidebar-open");
+        document.body.classList.remove("inspector-open");
+      }
+      document.body.classList.toggle("sidebar-collapsed", !document.body.classList.contains("sidebar-open"));
+      document.body.classList.toggle("inspector-collapsed", !document.body.classList.contains("inspector-open"));
     } else {
-      document.body.classList.remove("sidebar-collapsed");
       document.body.classList.remove("sidebar-open");
-      if (!document.body.classList.contains("inspector-collapsed")) {
+      document.body.classList.toggle("sidebar-collapsed", !!state.desktopSidebarCollapsed);
+      document.body.classList.remove("inspector-open");
+      document.body.classList.toggle("inspector-collapsed", !!state.desktopInspectorCollapsed);
+      if (!state.desktopInspectorCollapsed) {
         document.body.classList.add("inspector-open");
       }
     }
@@ -1951,6 +1959,9 @@
     state.focusMode = !state.focusMode;
     saveFocusMode();
     applyFocusMode();
+    if (!state.focusMode) {
+      detectMobile();
+    }
     renderHeaderAndRoomState();
     toast(state.focusMode ? "Modo foco ligado. Agora o chat respira." : "Modo foco desligado. A base voltou completa.", "ok");
   }
@@ -1986,22 +1997,26 @@
 
   function openSidebar() {
     if (!state.compactLayout) {
+      state.desktopSidebarCollapsed = false;
       document.body.classList.remove("sidebar-collapsed");
       syncPeekButtons();
       return;
     }
     closeInspector();
     document.body.classList.add("sidebar-open");
+    document.body.classList.remove("sidebar-collapsed");
     syncBackdrop();
   }
 
   function closeSidebar() {
     if (!state.compactLayout) {
+      state.desktopSidebarCollapsed = true;
       document.body.classList.add("sidebar-collapsed");
       syncPeekButtons();
       return;
     }
     document.body.classList.remove("sidebar-open");
+    document.body.classList.add("sidebar-collapsed");
     syncBackdrop();
   }
 
@@ -2013,6 +2028,7 @@
       syncBackdrop();
       return;
     }
+    state.desktopInspectorCollapsed = false;
     document.body.classList.remove("inspector-collapsed");
     document.body.classList.add("inspector-open");
     syncPeekButtons();
@@ -2020,12 +2036,14 @@
 
   function closeInspector() {
     if (!state.compactLayout) {
+      state.desktopInspectorCollapsed = true;
       document.body.classList.add("inspector-collapsed");
       document.body.classList.remove("inspector-open");
       syncPeekButtons();
       return;
     }
     document.body.classList.remove("inspector-open");
+    document.body.classList.add("inspector-collapsed");
     syncBackdrop();
   }
 
@@ -2356,6 +2374,8 @@
     state.connectionStatus = "offline";
     state.lastStreamAt = 0;
     state.favoriteNavIds = [];
+    state.desktopSidebarCollapsed = false;
+    state.desktopInspectorCollapsed = false;
     if (state.stream) {
       state.stream.close();
       state.stream = null;
