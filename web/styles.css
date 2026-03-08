@@ -412,6 +412,7 @@ pre,
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 96%, transparent), var(--surface));
   box-shadow: var(--shadow);
   animation: toast-in 160ms ease;
+  border-left-width: 4px;
 }
 
 .toast strong {
@@ -429,10 +430,12 @@ pre,
 
 .toast.warn {
   border-color: rgba(255, 214, 94, 0.36);
+  background: linear-gradient(180deg, rgba(54, 44, 17, 0.96), rgba(27, 22, 8, 0.94));
 }
 
 .toast.err {
   border-color: rgba(255, 85, 117, 0.36);
+  background: linear-gradient(180deg, rgba(58, 19, 30, 0.96), rgba(28, 10, 14, 0.94));
 }
 
 #login-view {
@@ -579,6 +582,13 @@ pre,
   justify-items: center;
 }
 
+.login-credit {
+  font-size: 0.78rem;
+  color: rgba(237, 249, 237, 0.68);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
 .boot-lines {
   display: grid;
   gap: 0.25rem;
@@ -598,12 +608,13 @@ pre,
 }
 
 #panel-view {
-  height: 100vh;
+  height: 100dvh;
   padding: 1rem;
 }
 
 #panel-shell {
   height: 100%;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, var(--sidebar-width)) minmax(0, 1fr);
   gap: 1rem;
@@ -632,6 +643,7 @@ body.focus-mode #panel-shell {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0.65rem;
   padding: 0.9rem 0.9rem 0.9rem 1rem;
+  max-height: 100%;
   overflow: visible;
   transition: opacity 180ms ease, transform 220ms ease, visibility 220ms ease;
 }
@@ -1282,8 +1294,8 @@ body.sidebar-collapsed #channel-panel {
 }
 
 #conversation-panel.apps-lab-mode {
-  grid-template-rows: auto auto;
-  align-content: start;
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto;
+  align-content: stretch;
 }
 
 #conversation-panel.sus-mode {
@@ -2631,6 +2643,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #panel-shell {
     grid-template-columns: 1fr;
+    height: 100%;
   }
 
   #channel-panel,
@@ -2761,6 +2774,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 1rem;
   }
 
+  #panel-view {
+    padding: 0.65rem;
+  }
+
   .login-download-actions {
     flex-direction: column;
     align-items: stretch;
@@ -2768,6 +2785,14 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #conversation-panel {
     padding: 0.85rem;
+  }
+
+  #channel-panel,
+  #inspector-panel {
+    top: 0.65rem;
+    bottom: 0.65rem;
+    height: auto;
+    max-height: calc(100dvh - 1.3rem);
   }
 
   .message-card {
