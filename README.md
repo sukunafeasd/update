@@ -2,6 +2,10 @@
 
 Plataforma privada online para grupo fechado, com chat em tempo real, DMs, perfis, uploads, areas protegidas, IA `Nego Dramias`, painel admin e biblioteca de midia persistente.
 
+URL oficial atual:
+
+- `https://update-wrl6.onrender.com`
+
 ## O que esta ativo
 
 - Login por usuario ou email com sessao por cookie.
@@ -21,6 +25,7 @@ Plataforma privada online para grupo fechado, com chat em tempo real, DMs, perfi
 - `internal/db`: persistencia SQLite e migracoes.
 - `web`: frontend do painel.
 - `scripts`: smoke, backup e operacao local/publica.
+- `scripts`: smoke, backup local, backup remoto da URL fixa e operacao.
 - `docs`: arquitetura, producao e modelo de seguranca atual.
 
 ## Rodar localmente
@@ -71,10 +76,31 @@ Backup de banco e uploads:
 powershell -ExecutionPolicy Bypass -File .\scripts\backup-panel.ps1
 ```
 
+Backup remoto da URL oficial:
+
+```powershell
+$env:UNIVERSALD_OPS_TOKEN="teu-token"
+powershell -ExecutionPolicy Bypass -File .\scripts\backup-remote-panel.ps1
+```
+
 Restore de backup:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\restore-panel.ps1 -ArchivePath .\backups\painel-dief-backup-YYYYMMDD-HHMMSS.zip -Force
+```
+
+Espelho local da producao gratis:
+
+```powershell
+$env:UNIVERSALD_OPS_TOKEN="teu-token"
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-production-mirror.ps1
+```
+
+Smoke da URL fixa:
+
+```powershell
+$env:UNIVERSALD_OPS_TOKEN="teu-token"
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-production.ps1
 ```
 
 Resumo operacional:
@@ -94,7 +120,10 @@ Publicacao e URL fixa:
 - [docs/PRODUCTION.md](/C:/Users/cafe/Desktop/site.dief/docs/PRODUCTION.md)
 - [docs/STAGING.md](/C:/Users/cafe/Desktop/site.dief/docs/STAGING.md)
 - [docs/MONITORING.md](/C:/Users/cafe/Desktop/site.dief/docs/MONITORING.md)
+- [docs/FREE_PLAN.md](/C:/Users/cafe/Desktop/site.dief/docs/FREE_PLAN.md)
 
 ## Estado atual
 
 O projeto esta consolidado como runtime do `Painel Dief`. Rotas antigas do desktop legado nao fazem mais parte do modo padrao do servidor web do site.
+
+No plano gratis do Render, a URL fixa esta funcionando, mas o disco do runtime nao deve ser tratado como persistencia forte. Por isso a operacao correta e manter backup remoto e espelho local.

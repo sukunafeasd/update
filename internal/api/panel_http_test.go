@@ -250,6 +250,42 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 		"roomId":    roomID,
 		"messageId": messageID,
 	}, nil, http.StatusOK)
+
+	memberStamp := time.Now().UTC().UnixNano()
+	memberName := fmt.Sprintf("membro%d", memberStamp)
+	memberEmail := fmt.Sprintf("membro%d@paineldief.local", memberStamp)
+	memberPassword := "Membro#2026"
+	mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/users", map[string]any{
+		"username":    memberName,
+		"email":       memberEmail,
+		"password":    memberPassword,
+		"displayName": "Membro HTTP",
+		"role":        "member",
+	}, nil, http.StatusOK)
+	mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/logout", nil, nil, http.StatusOK)
+	memberLogin := mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
+		"login":    memberName,
+		"password": memberPassword,
+	}, nil, http.StatusOK)
+	if memberLogin["ok"] != true {
+		t.Fatalf("expected member login ok")
+	}
+	terminalDenied := mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/terminal/run", map[string]any{
+		"command": "Get-Date",
+	}, nil, http.StatusForbidden)
+	if !strings.Contains(strings.ToLower(asString(t, terminalDenied["error"])), "admin") {
+		t.Fatalf("expected terminal admin error, got %#v", terminalDenied["error"])
+	}
+	createUserDenied := mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/users", map[string]any{
+		"username":    "nao-pode",
+		"email":       "nao-pode@paineldief.local",
+		"password":    "Nada#2026",
+		"displayName": "Nao Pode",
+		"role":        "member",
+	}, nil, http.StatusForbidden)
+	if !strings.Contains(strings.ToLower(asString(t, createUserDenied["error"])), "dono") {
+		t.Fatalf("expected owner restriction error, got %#v", createUserDenied["error"])
+	}
 }
 
 func mustUploadFile(t *testing.T, client *http.Client, url string, fieldName string, fileName string, contentType string, payload []byte, wantStatus int) map[string]any {

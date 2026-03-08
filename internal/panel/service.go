@@ -1,12 +1,14 @@
 package panel
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -105,6 +107,65 @@ func NewService(store *db.Store, uploadsDir string) *Service {
 
 func (s *Service) UploadsDir() string {
 	return s.uploadsDir
+}
+
+func (s *Service) WriteBackupArchive(w io.Writer, source string) (string, error) {
+	if s == nil || s.store == nil {
+		return "", errors.New("panel service indisponivel")
+	}
+	if w == nil {
+		return "", errors.New("writer de backup indisponivel")
+	}
+
+	now := time.Now().UTC()
+	tempDir, err := os.MkdirTemp("", "painel-dief-export-*")
+	if err != nil {
+		return "", fmt.Errorf("create export temp dir: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	snapshotPath := filepath.Join(tempDir, "universald.snapshot.db")
+	if err := s.store.SnapshotTo(snapshotPath); err != nil {
+		return "", err
+	}
+
+	snapshotInfo, err := os.Stat(snapshotPath)
+	if err != nil {
+		return "", fmt.Errorf("stat db snapshot: %w", err)
+	}
+
+	uploadFiles, uploadBytes, err := dirUsage(s.uploadsDir)
+	if err != nil {
+		return "", err
+	}
+
+	manifest := map[string]any{
+		"service":    "painel-dief",
+		"version":    s.Version(),
+		"source":     strings.TrimSpace(source),
+		"createdAt":  now.Format(time.RFC3339Nano),
+		"dbSnapshot": map[string]any{"name": "universald.snapshot.db", "bytes": snapshotInfo.Size()},
+		"uploads":    map[string]any{"dir": "panel_uploads", "files": uploadFiles, "bytes": uploadBytes},
+	}
+
+	fileName := "painel-dief-export-" + now.Format("20060102-150405") + ".zip"
+	archive := zip.NewWriter(w)
+	if err := addZipJSON(archive, "backup-manifest.json", manifest, now); err != nil {
+		_ = archive.Close()
+		return "", err
+	}
+	if err := addZipFile(archive, "universald.snapshot.db", snapshotPath, now); err != nil {
+		_ = archive.Close()
+		return "", err
+	}
+	if err := addZipDir(archive, s.uploadsDir, "panel_uploads", now); err != nil {
+		_ = archive.Close()
+		return "", err
+	}
+	if err := archive.Close(); err != nil {
+		return "", fmt.Errorf("close backup archive: %w", err)
+	}
+	return fileName, nil
 }
 
 func (s *Service) UploadLimitForRole(role string) int64 {
@@ -273,6 +334,80 @@ func dirUsage(root string) (int, int64, error) {
 		return 0, 0, fmt.Errorf("walk uploads dir: %w", err)
 	}
 	return files, bytes, nil
+}
+
+func addZipJSON(archive *zip.Writer, name string, payload any, now time.Time) error {
+	raw, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal backup manifest: %w", err)
+	}
+	header := &zip.FileHeader{
+		Name:     filepath.ToSlash(name),
+		Method:   zip.Deflate,
+		Modified: now,
+	}
+	entry, err := archive.CreateHeader(header)
+	if err != nil {
+		return fmt.Errorf("create manifest entry: %w", err)
+	}
+	if _, err := entry.Write(raw); err != nil {
+		return fmt.Errorf("write manifest entry: %w", err)
+	}
+	return nil
+}
+
+func addZipFile(archive *zip.Writer, name, path string, now time.Time) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open export file: %w", err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("stat export file: %w", err)
+	}
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return fmt.Errorf("build zip header: %w", err)
+	}
+	header.Name = filepath.ToSlash(name)
+	header.Method = zip.Deflate
+	header.Modified = now
+	entry, err := archive.CreateHeader(header)
+	if err != nil {
+		return fmt.Errorf("create zip entry: %w", err)
+	}
+	if _, err := io.Copy(entry, file); err != nil {
+		return fmt.Errorf("copy zip entry: %w", err)
+	}
+	return nil
+}
+
+func addZipDir(archive *zip.Writer, root, prefix string, now time.Time) error {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return nil
+	}
+	if _, err := os.Stat(root); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("stat export dir: %w", err)
+	}
+	return filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info == nil || info.IsDir() {
+			return nil
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		return addZipFile(archive, filepath.ToSlash(filepath.Join(prefix, relative)), path, now)
+	})
 }
 
 func (s *Service) Login(login, password string) (model.PanelUser, model.PanelSession, error) {

@@ -1085,6 +1085,7 @@ body.sidebar-collapsed #channel-panel {
 #workspace-grid {
   min-height: 0;
   display: grid;
+  overflow: hidden;
 }
 
 #conversation-panel {
@@ -1093,6 +1094,21 @@ body.sidebar-collapsed #channel-panel {
   gap: 0.8rem;
   padding: 0.95rem;
   min-height: 0;
+  overflow: hidden;
+}
+
+#topbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.topbar-actions {
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 92%, transparent), var(--surface-soft));
+  box-shadow: var(--shadow);
 }
 
 #room-dashboard {
@@ -1986,6 +2002,9 @@ body.mobile .mobile-backdrop {
   border-radius: 16px;
   border: 1px dashed var(--line);
   background: rgba(255, 255, 255, 0.02);
+  min-height: 96px;
+  display: grid;
+  align-content: center;
 }
 
 .peek-button {

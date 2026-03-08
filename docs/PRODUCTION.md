@@ -24,6 +24,10 @@ Publicar o `Painel Dief` com URL fixa, HTTPS, banco persistente, uploads persist
 - restore de backup em [scripts/restore-panel.ps1](/C:/Users/cafe/Desktop/site.dief/scripts/restore-panel.ps1)
 - consulta operacional em [scripts/check-ops.ps1](/C:/Users/cafe/Desktop/site.dief/scripts/check-ops.ps1)
 - preflight de URL fixa em [scripts/deploy-readiness.ps1](/C:/Users/cafe/Desktop/site.dief/scripts/deploy-readiness.ps1)
+- export remoto protegido em `/api/ops/export`
+- backup remoto em [scripts/backup-remote-panel.ps1](/C:/Users/cafe/Desktop/site.dief/scripts/backup-remote-panel.ps1)
+- espelho local da producao em [scripts/sync-production-mirror.ps1](/C:/Users/cafe/Desktop/site.dief/scripts/sync-production-mirror.ps1)
+- smoke oficial em [scripts/smoke-production.ps1](/C:/Users/cafe/Desktop/site.dief/scripts/smoke-production.ps1)
 
 ## Variaveis principais
 
@@ -105,6 +109,22 @@ Resumo protegido:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\check-ops.ps1 -BaseUrl https://teu-endereco -Token teu-token
 ```
+
+Export de backup remoto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\backup-remote-panel.ps1 -BaseUrl https://teu-endereco -OpsToken teu-token
+```
+
+## Plano gratis
+
+Se o host estiver no plano gratis sem disco persistente:
+
+- trata a URL fixa como producao oficial
+- nao trata o runtime como armazenamento confiavel
+- mantem backup remoto fora do provedor
+- mantem espelho local restauravel
+- roda smoke recorrente antes e depois de atualizar
 
 ## Limite deste ambiente
 

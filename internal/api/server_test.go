@@ -1,7 +1,10 @@
 package api
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -215,5 +218,99 @@ func TestOpsSummaryAcceptsBearerToken(t *testing.T) {
 	}
 	if summary["users"] == nil {
 		t.Fatalf("expected users count in ops summary")
+	}
+}
+
+func TestOpsExportRequiresTokenOutsideLoopback(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-export.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "production",
+		DBPath:   filepath.Join(root, "server-export.db"),
+		OpsToken: "ops-secret",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/ops/export", nil)
+	req.RemoteAddr = "198.51.100.20:443"
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 without ops token, got %d", w.Code)
+	}
+}
+
+func TestOpsExportStreamsBackupArchive(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-export.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "production",
+		DBPath:   filepath.Join(root, "server-export.db"),
+		OpsToken: "ops-secret",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/ops/export", nil)
+	req.RemoteAddr = "198.51.100.20:443"
+	req.Header.Set("Authorization", "Bearer ops-secret")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if got := w.Header().Get("Content-Type"); !strings.Contains(got, "application/zip") {
+		t.Fatalf("expected zip content type, got %q", got)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(w.Body.Bytes()), int64(w.Body.Len()))
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	var foundManifest bool
+	var foundSnapshot bool
+	for _, file := range reader.File {
+		if file.Name == "backup-manifest.json" {
+			foundManifest = true
+			handle, openErr := file.Open()
+			if openErr != nil {
+				t.Fatalf("open manifest: %v", openErr)
+			}
+			raw, readErr := io.ReadAll(handle)
+			_ = handle.Close()
+			if readErr != nil {
+				t.Fatalf("read manifest: %v", readErr)
+			}
+			if !strings.Contains(string(raw), "\"service\": \"painel-dief\"") {
+				t.Fatalf("unexpected manifest content: %s", string(raw))
+			}
+		}
+		if file.Name == "universald.snapshot.db" {
+			foundSnapshot = true
+		}
+	}
+	if !foundManifest {
+		t.Fatalf("expected backup manifest in zip")
+	}
+	if !foundSnapshot {
+		t.Fatalf("expected database snapshot in zip")
 	}
 }

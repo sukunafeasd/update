@@ -62,6 +62,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/ready", s.handleReady)
 	mux.HandleFunc("/api/ops/summary", s.handleOpsSummary)
+	mux.HandleFunc("/api/ops/export", s.handleOpsExport)
 	s.registerPanelRoutes(mux)
 	if s.panelSvc != nil && strings.TrimSpace(s.panelSvc.UploadsDir()) != "" {
 		mux.Handle("/uploads/", s.uploadsHandler())
@@ -181,6 +182,30 @@ func (s *Server) handleOpsSummary(w http.ResponseWriter, r *http.Request) {
 		"summary":      summary,
 		"timestamp":    time.Now().UTC(),
 	})
+}
+
+func (s *Server) handleOpsExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.panelSvc == nil {
+		writeError(w, http.StatusServiceUnavailable, fmt.Errorf("painel indisponivel"))
+		return
+	}
+	if !s.authorizeOpsRequest(r) {
+		writeError(w, http.StatusForbidden, fmt.Errorf("acesso ops negado"))
+		return
+	}
+
+	fileName := "painel-dief-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": fileName}))
+	if _, err := s.panelSvc.WriteBackupArchive(w, "ops-export"); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
 }
 
 func (s *Server) staticHandler() http.Handler {

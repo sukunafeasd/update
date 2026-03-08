@@ -12,7 +12,8 @@ import (
 )
 
 type Store struct {
-	db *sql.DB
+	db   *sql.DB
+	path string
 }
 
 func Open(path string) (*Store, error) {
@@ -40,7 +41,7 @@ func Open(path string) (*Store, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	store := &Store{db: db}
+	store := &Store{db: db, path: path}
 	if err := store.migrate(); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -51,6 +52,25 @@ func Open(path string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+func (s *Store) Path() string {
+	return strings.TrimSpace(s.path)
+}
+
+func (s *Store) SnapshotTo(dest string) error {
+	dest = strings.TrimSpace(dest)
+	if dest == "" {
+		return fmt.Errorf("snapshot path vazio")
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return fmt.Errorf("create snapshot dir: %w", err)
+	}
+	escaped := strings.ReplaceAll(filepath.ToSlash(dest), "'", "''")
+	if _, err := s.db.Exec("VACUUM INTO '" + escaped + "'"); err != nil {
+		return fmt.Errorf("snapshot sqlite: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) migrate() error {

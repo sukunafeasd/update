@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -106,5 +107,45 @@ CREATE TABLE optimization_runs (
 		if count != 0 {
 			t.Fatalf("expected legacy table %s to be dropped, got count=%d", table, count)
 		}
+	}
+}
+
+func TestSnapshotToCreatesReusableCopy(t *testing.T) {
+	sourcePath := filepath.Join(t.TempDir(), "panel.db")
+	store, err := Open(sourcePath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	if store.Path() != sourcePath {
+		t.Fatalf("expected store path %q, got %q", sourcePath, store.Path())
+	}
+
+	snapshotPath := filepath.Join(t.TempDir(), "panel.snapshot.db")
+	if err := store.SnapshotTo(snapshotPath); err != nil {
+		t.Fatalf("snapshot sqlite: %v", err)
+	}
+
+	info, err := os.Stat(snapshotPath)
+	if err != nil {
+		t.Fatalf("stat snapshot: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Fatalf("expected non-empty snapshot file")
+	}
+
+	snapshotStore, err := Open(snapshotPath)
+	if err != nil {
+		t.Fatalf("open snapshot store: %v", err)
+	}
+	defer snapshotStore.Close()
+
+	var count int
+	if err := snapshotStore.db.QueryRow(`SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='panel_users'`).Scan(&count); err != nil {
+		t.Fatalf("query snapshot schema: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected panel_users table in snapshot, got count=%d", count)
 	}
 }
