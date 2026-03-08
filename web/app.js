@@ -1764,6 +1764,28 @@
     }, 3800);
   }
 
+  function showSusOmen(text) {
+    var omen = q("sus-omen");
+    if (!omen) {
+      return;
+    }
+    omen.textContent = text || "Tem alguma coisa olhando de volta.";
+    omen.classList.remove("hidden");
+    omen.classList.remove("active");
+    window.setTimeout(function() {
+      omen.classList.add("active");
+    }, 20);
+    if (state.susOmenTimer) {
+      window.clearTimeout(state.susOmenTimer);
+    }
+    state.susOmenTimer = window.setTimeout(function() {
+      omen.classList.remove("active");
+      window.setTimeout(function() {
+        omen.classList.add("hidden");
+      }, 180);
+    }, 1750);
+  }
+
   function setButtonBusy(target, busy, busyText, defaultText) {
     var button = typeof target === "string" ? q(target) : target;
     if (!button) {
@@ -2548,6 +2570,7 @@
     state.susClicks = Number(state.susClicks || 0) + 1;
     state.susPositionIndex = Math.min(SUS_POSITIONS.length - 1, Number(state.susPositionIndex || 0) + 1);
     playTone("sus");
+    showSusOmen(currentSusWarning());
     renderSusPanel();
     renderDashboard();
     if (state.susClicks >= 4) {
