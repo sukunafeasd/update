@@ -163,6 +163,95 @@ select {
   backdrop-filter: blur(18px);
 }
 
+#panel-shell,
+#workspace,
+#workspace-grid,
+#topbar,
+.topbar-main,
+.topbar-actions,
+.topbar-utility-strip,
+.room-pill-row,
+.dashboard-strip,
+.dashboard-quickline,
+.dashboard-pulse,
+.overview-grid,
+.owner-admin-grid,
+.social-profile-grid,
+.member-stat-strip,
+.social-actions,
+.media-toolbar,
+.filter-toolbar,
+.search-results,
+#room-media-list,
+.presence-list,
+.roster-list,
+.logs-list,
+.activity-feed,
+.event-list,
+.poll-list,
+#favorite-list,
+#moments-list,
+.apps-lab-deck,
+.sus-panel,
+.direct-hub-summary,
+.direct-hub-grid,
+.spotlight-grid {
+  min-width: 0;
+}
+
+#channel-panel,
+#conversation-panel,
+#inspector-panel,
+#workspace,
+#workspace-grid,
+#message-stream,
+.inspector-body,
+.sidebar-scroll {
+  min-height: 0;
+}
+
+.sidebar-scroll,
+.inspector-body,
+#message-stream,
+#room-media-list,
+.presence-list,
+.roster-list,
+.logs-list,
+.activity-feed,
+.event-list,
+.poll-list,
+#favorite-list,
+#moments-list,
+.apps-lab-deck,
+.sus-panel,
+.modal-card,
+.login-card {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.search-card,
+.roster-item,
+.utility-card,
+.info-card,
+.presence-item,
+.favorite-card,
+.event-card,
+.poll-card {
+  min-width: 0;
+}
+
+.search-card *,
+.roster-item *,
+.utility-card *,
+.info-card *,
+.presence-item *,
+.favorite-card *,
+.event-card *,
+.poll-card * {
+  overflow-wrap: anywhere;
+}
+
 .btn {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.025);
@@ -377,6 +466,9 @@ pre,
   display: grid;
   gap: 0.75rem;
   width: min(360px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 #sus-omen {
@@ -424,6 +516,7 @@ pre,
 .toast span {
   color: var(--muted);
   font-size: 0.84rem;
+  overflow-wrap: anywhere;
 }
 
 .toast.ok {
@@ -3284,6 +3377,14 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     height: 68px;
   }
 
+  #sus-omen {
+    inset: auto 50% 9vh auto;
+    min-width: calc(100vw - 1.2rem);
+    max-width: calc(100vw - 1.2rem);
+    padding: 0.9rem 1rem;
+    border-radius: 18px;
+  }
+
   .member-shared-room {
     width: 100%;
     justify-content: space-between;
@@ -3315,6 +3416,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     flex-basis: 156px;
   }
 
+  .social-profile-grid,
+  .owner-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
   #channel-panel,
   #inspector-panel {
     top: 0.65rem;
@@ -3334,6 +3440,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .composer-actions {
     display: grid;
+  }
+
+  .topbar-utility-strip,
+  .topbar-actions,
+  .social-actions,
+  .member-stat-strip {
+    gap: 0.45rem;
   }
 
   .composer-shell textarea {
