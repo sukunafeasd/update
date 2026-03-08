@@ -43,11 +43,12 @@
           <div class="login-download-copy">
             <span class="eyebrow">desktop app</span>
             <strong>Baixar UniversalD</strong>
-            <p>Quer usar no Windows com teu app tambem? Baixa direto daqui e instala sem sair do login.</p>
+            <p>Quer usar no Windows com teu app tambem? Libera o download com senha e instala sem sair do login.</p>
           </div>
           <div class="login-download-actions">
-            <a class="btn btn-ghost btn-download" href="/downloads/universalD.exe" download="universalD.exe">Baixar UniversalD</a>
-            <span class="ghost-pill">Windows .exe</span>
+            <button id="btn-login-download" class="btn btn-ghost btn-download" type="button">Baixar UniversalD</button>
+            <button id="btn-login-guide" class="btn btn-ghost" type="button">Ver novidades</button>
+            <span class="ghost-pill">Windows app oficial</span>
             <span class="ghost-pill">14 MB</span>
           </div>
         </section>
@@ -140,6 +141,7 @@
           </div>
 
           <div class="topbar-actions">
+            <button id="btn-open-app" class="btn btn-ghost" type="button">UniversalD</button>
             <button id="btn-room-favorite" class="btn btn-ghost" type="button">Fixar area</button>
             <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="members">Membros</button>
             <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="files">Midia</button>
@@ -182,6 +184,22 @@
             </div>
 
             <section id="apps-lab-deck" class="apps-lab-deck hidden">
+              <article class="utility-card">
+                <div class="utility-head">
+                  <h4>UniversalD desktop</h4>
+                  <span class="ghost-pill">privado</span>
+                </div>
+                <p class="utility-copy">Baixa ou atualiza o app oficial do Painel Dief pra usar fora do navegador com a mesma identidade da base.</p>
+                <div class="inline-row">
+                  <span class="ghost-pill">Windows app oficial</span>
+                  <span class="ghost-pill">download protegido</span>
+                </div>
+                <div class="inline-row">
+                  <button id="btn-app-download" class="btn btn-primary" type="button">Baixar ou atualizar</button>
+                  <button id="btn-app-guide" class="btn btn-ghost" type="button">Ver novidades</button>
+                </div>
+              </article>
+
               <article class="utility-card">
                 <div class="utility-head">
                   <h4>Gerador rapido</h4>
@@ -588,6 +606,25 @@
       <div class="guide-actions">
         <button id="btn-guide-dismiss" class="btn btn-primary" type="button">Entendi</button>
         <button id="btn-guide-remind" class="btn btn-ghost" type="button">Mostrar depois</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="download-access-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card narrow">
+      <div class="modal-head">
+        <h3>Download privado do app</h3>
+        <button data-close-modal="download-access-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+      <p>Digite a senha do UniversalD para liberar o instalador privado do Painel Dief.</p>
+      <form id="download-access-form" class="stack-form">
+        <input id="download-access-password" type="password" placeholder="senha do app" />
+        <button id="btn-download-access-submit" class="btn btn-primary" type="submit">Liberar e baixar</button>
+      </form>
+      <p id="download-access-error" class="login-error hidden"></p>
+      <div class="inline-row">
+        <span class="ghost-pill">Windows .exe</span>
+        <span class="ghost-pill">acesso protegido</span>
       </div>
     </div>
   </div>

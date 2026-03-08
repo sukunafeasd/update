@@ -530,11 +530,13 @@ pre,
   text-align: center;
 }
 
-.login-stage.login-error-pulse {
+.login-stage.login-error-pulse,
+.modal-card.login-error-pulse {
   animation: login-shake 360ms ease;
 }
 
-.login-stage.login-success-pulse {
+.login-stage.login-success-pulse,
+.modal-card.login-success-pulse {
   animation: login-pass 520ms ease;
 }
 

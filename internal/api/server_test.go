@@ -315,17 +315,43 @@ func TestOpsExportStreamsBackupArchive(t *testing.T) {
 	}
 }
 
-func TestEmbeddedDownloadRouteServesUniversalD(t *testing.T) {
-	srv := NewPanelServer("", "1.4.4", true, nil, ServerOptions{})
+func TestEmbeddedDownloadRouteRequiresAccess(t *testing.T) {
+	srv := NewPanelServer("", "1.4.4", true, nil, ServerOptions{DownloadPassword: "segredo-app"})
 	req := httptest.NewRequest(http.MethodGet, "/downloads/universalD.exe", nil)
 	w := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200 for embedded download, got %d", w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for protected embedded download, got %d", w.Code)
 	}
-	if bodyLen := w.Body.Len(); bodyLen < 1024 {
+}
+
+func TestEmbeddedDownloadRouteUnlocksWithPasswordCookie(t *testing.T) {
+	srv := NewPanelServer("", "1.4.4", true, nil, ServerOptions{DownloadPassword: "segredo-app"})
+
+	accessReq := httptest.NewRequest(http.MethodPost, "/api/downloads/universald/access", strings.NewReader(`{"password":"segredo-app"}`))
+	accessReq.Header.Set("Content-Type", "application/json")
+	accessRes := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(accessRes, accessReq)
+
+	if accessRes.Code != http.StatusOK {
+		t.Fatalf("expected 200 when unlocking app download, got %d", accessRes.Code)
+	}
+	cookies := accessRes.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("expected download access cookie to be set")
+	}
+
+	downloadReq := httptest.NewRequest(http.MethodGet, "/downloads/universalD.exe", nil)
+	downloadReq.AddCookie(cookies[0])
+	downloadRes := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(downloadRes, downloadReq)
+
+	if downloadRes.Code != http.StatusOK {
+		t.Fatalf("expected 200 for embedded download after unlock, got %d", downloadRes.Code)
+	}
+	if bodyLen := downloadRes.Body.Len(); bodyLen < 1024 {
 		t.Fatalf("expected download body larger than 1KB, got %d bytes", bodyLen)
 	}
 }

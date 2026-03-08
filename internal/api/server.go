@@ -1,12 +1,15 @@
 package api
 
 import (
+	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net"
@@ -21,10 +24,11 @@ import (
 )
 
 type ServerOptions struct {
-	AppEnv       string
-	PublicOrigin string
-	DBPath       string
-	OpsToken     string
+	AppEnv           string
+	PublicOrigin     string
+	DBPath           string
+	OpsToken         string
+	DownloadPassword string
 }
 
 type Server struct {
@@ -36,6 +40,7 @@ type Server struct {
 	publicOrigin string
 	dbPath       string
 	opsToken     string
+	downloadPass string
 	safeMode     bool
 	panelOnly    bool
 	startedAt    time.Time
@@ -51,6 +56,7 @@ func NewPanelServer(staticDir, version string, safeMode bool, panelSvc *panel.Se
 		publicOrigin: strings.TrimRight(strings.TrimSpace(opts.PublicOrigin), "/"),
 		dbPath:       strings.TrimSpace(opts.DBPath),
 		opsToken:     strings.TrimSpace(opts.OpsToken),
+		downloadPass: strings.TrimSpace(opts.DownloadPassword),
 		safeMode:     safeMode,
 		panelOnly:    true,
 		startedAt:    time.Now().UTC(),
@@ -63,6 +69,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/ready", s.handleReady)
 	mux.HandleFunc("/api/ops/summary", s.handleOpsSummary)
 	mux.HandleFunc("/api/ops/export", s.handleOpsExport)
+	mux.HandleFunc("/api/downloads/universald/access", s.handleUniversalDDownloadAccess)
+	mux.HandleFunc("/downloads/universalD.exe", s.handleUniversalDDownload)
 	s.registerPanelRoutes(mux)
 	if s.panelSvc != nil && strings.TrimSpace(s.panelSvc.UploadsDir()) != "" {
 		mux.Handle("/uploads/", s.uploadsHandler())
@@ -215,6 +223,112 @@ func (s *Server) staticHandler() http.Handler {
 		}
 	}
 	return http.FileServer(http.FS(webassets.Files()))
+}
+
+func (s *Server) handleUniversalDDownloadAccess(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if strings.TrimSpace(s.downloadPass) == "" {
+		writeError(w, http.StatusServiceUnavailable, fmt.Errorf("download privado nao configurado"))
+		return
+	}
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(r.Body, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(strings.TrimSpace(req.Password)), []byte(s.downloadPass)) != 1 {
+		writeError(w, http.StatusUnauthorized, fmt.Errorf("senha do app incorreta"))
+		return
+	}
+	writeDownloadCookie(w, r, s.downloadPass)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":          true,
+		"message":     "UniversalD liberado. Pode baixar sem drama.",
+		"downloadUrl": "/downloads/universalD.exe",
+	})
+}
+
+func (s *Server) handleUniversalDDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !s.canAccessProtectedDownload(r) {
+		writeError(w, http.StatusUnauthorized, fmt.Errorf("download privado bloqueado"))
+		return
+	}
+	payload, err := fs.ReadFile(webassets.Files(), "downloads/universalD.exe")
+	if err != nil {
+		writeError(w, http.StatusNotFound, fmt.Errorf("app indisponivel"))
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": "universalD.exe"}))
+	http.ServeContent(w, r, "universalD.exe", time.Time{}, bytes.NewReader(payload))
+}
+
+func (s *Server) canAccessProtectedDownload(r *http.Request) bool {
+	if s.hasValidPanelSession(r) {
+		return true
+	}
+	if strings.TrimSpace(s.downloadPass) == "" {
+		return false
+	}
+	expected := downloadCookieValue(s.downloadPass)
+	if expected == "" {
+		return false
+	}
+	current := readDownloadCookie(r)
+	if current == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(current), []byte(expected)) == 1
+}
+
+func (s *Server) hasValidPanelSession(r *http.Request) bool {
+	if s.panelSvc == nil || r == nil {
+		return false
+	}
+	sessionID := readPanelSessionID(r)
+	if strings.TrimSpace(sessionID) == "" {
+		return false
+	}
+	_, _, err := s.panelSvc.Authenticate(sessionID)
+	return err == nil
+}
+
+func downloadCookieValue(secret string) string {
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte("painel-dief-download|" + secret))
+	return hex.EncodeToString(sum[:])
+}
+
+func writeDownloadCookie(w http.ResponseWriter, r *http.Request, secret string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "painel_dief_download",
+		Value:    downloadCookieValue(secret),
+		Path:     "/downloads/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   isSecureRequest(r),
+		Expires:  time.Now().UTC().Add(12 * time.Hour),
+	})
+}
+
+func readDownloadCookie(r *http.Request) string {
+	if cookie, err := r.Cookie("painel_dief_download"); err == nil && cookie != nil && strings.TrimSpace(cookie.Value) != "" {
+		return strings.TrimSpace(cookie.Value)
+	}
+	return ""
 }
 
 func decodeJSON(body io.ReadCloser, target any) error {

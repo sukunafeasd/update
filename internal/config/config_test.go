@@ -37,6 +37,7 @@ func TestLoadIncludesTimeoutAndHeaderDefaults(t *testing.T) {
 	t.Setenv("UNIVERSALD_APP_ENV", "staging")
 	t.Setenv("UNIVERSALD_PUBLIC_ORIGIN", "https://staging.paineldief.example/")
 	t.Setenv("UNIVERSALD_OPS_TOKEN", "ops-secret")
+	t.Setenv("UNIVERSALD_DOWNLOAD_PASSWORD", "app-secret")
 	t.Setenv("UNIVERSALD_BACKUP_RETENTION_DAYS", "21")
 	t.Setenv("UNIVERSALD_MAINTENANCE_INTERVAL_SEC", "90")
 	t.Setenv("UNIVERSALD_READ_TIMEOUT_SEC", "22")
@@ -55,6 +56,9 @@ func TestLoadIncludesTimeoutAndHeaderDefaults(t *testing.T) {
 	}
 	if cfg.OpsToken != "ops-secret" {
 		t.Fatalf("expected ops token to load, got %q", cfg.OpsToken)
+	}
+	if cfg.DownloadPassword != "app-secret" {
+		t.Fatalf("expected download password to load, got %q", cfg.DownloadPassword)
 	}
 	if cfg.BackupRetentionDays != 21 {
 		t.Fatalf("expected backup retention 21, got %d", cfg.BackupRetentionDays)

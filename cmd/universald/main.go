@@ -57,10 +57,11 @@ func main() {
 	panelSvc.StartMaintenance(runtimeCtx, cfg.MaintenanceInterval)
 
 	server := api.NewPanelServer(*webPath, version, *safeMode, panelSvc, api.ServerOptions{
-		AppEnv:       cfg.AppEnv,
-		PublicOrigin: cfg.PublicOrigin,
-		DBPath:       *dbPath,
-		OpsToken:     cfg.OpsToken,
+		AppEnv:           cfg.AppEnv,
+		PublicOrigin:     cfg.PublicOrigin,
+		DBPath:           *dbPath,
+		OpsToken:         cfg.OpsToken,
+		DownloadPassword: cfg.DownloadPassword,
 	})
 	httpServer := &http.Server{
 		Addr:              *bind,

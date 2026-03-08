@@ -45,6 +45,7 @@
     "\uD83E\uDD18 Sistema liberado sem drama.",
     "\uD83C\uDF89 Bah tche, agora sim abriu bonito."
   ];
+  var APP_DOWNLOAD_URL = "/downloads/universalD.exe";
   var THEME_PRESETS = {
     matrix: { label: "Matrix", accent: "#7bff00" },
     obsidian: { label: "Obsidian", accent: "#90a6ff" },
@@ -3368,6 +3369,66 @@
     q("guide-modal").classList.remove("hidden");
   }
 
+  function resetDownloadAccessState() {
+    q("download-access-password").value = "";
+    q("download-access-error").classList.add("hidden");
+    q("download-access-error").textContent = "";
+  }
+
+  function openDownloadAccessModal() {
+    resetDownloadAccessState();
+    q("download-access-modal").classList.remove("hidden");
+    q("download-access-password").focus();
+  }
+
+  async function handleDownloadAccessSubmit(event) {
+    event.preventDefault();
+    var submit = q("btn-download-access-submit");
+    var password = q("download-access-password").value.trim();
+    if (!password) {
+      q("download-access-error").classList.remove("hidden");
+      q("download-access-error").textContent = "Bah, sem a senha do app nao tem como liberar esse download.";
+      pulseClass(q("download-access-modal").querySelector(".modal-card"), "login-error-pulse");
+      return;
+    }
+    try {
+      setButtonBusy(submit, true, "Liberando...", "Liberar e baixar");
+      var data = await apiFetch("/api/downloads/universald/access", {
+        method: "POST",
+        body: JSON.stringify({ password: password })
+      });
+      closeModal("download-access-modal");
+      toast(data.message || "UniversalD liberado.", "ok");
+      window.location.assign(data.downloadUrl || APP_DOWNLOAD_URL);
+    } catch (err) {
+      q("download-access-error").classList.remove("hidden");
+      q("download-access-error").textContent = err.message || "Nao consegui liberar o download privado.";
+      pulseClass(q("download-access-modal").querySelector(".modal-card"), "login-error-pulse");
+      playTone("err");
+    } finally {
+      setButtonBusy(submit, false, "Liberando...", "Liberar e baixar");
+    }
+  }
+
+  function triggerUniversalDDownload() {
+    if (state.viewer) {
+      window.open(APP_DOWNLOAD_URL, "_blank", "noopener");
+      toast("UniversalD saindo da base. Se quiser atualizar depois, volta no Apps Lab.", "ok");
+      return;
+    }
+    openDownloadAccessModal();
+  }
+
+  function handleOpenAppShortcut() {
+    var room = roomBySlug("apps-lab");
+    if (room && Number(state.activeRoomId) !== Number(room.id)) {
+      selectRoom(room.id);
+      toast("Atalho do UniversalD te levou pro Apps Lab.", "ok");
+      return;
+    }
+    triggerUniversalDDownload();
+  }
+
   function maybeOpenGuide() {
     if (!state.viewer || hasSeenGuide()) {
       return;
@@ -3466,6 +3527,9 @@
     }
     if (id === "media-modal") {
       state.mediaPreview = null;
+    }
+    if (id === "download-access-modal") {
+      resetDownloadAccessState();
     }
   }
 
@@ -4233,9 +4297,15 @@
     detectMobile();
     window.addEventListener("resize", detectMobile);
     q("login-form").addEventListener("submit", handleLogin);
+    q("btn-login-download").addEventListener("click", openDownloadAccessModal);
+    q("btn-login-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-logout").addEventListener("click", handleLogout);
     q("btn-profile").addEventListener("click", openProfileModal);
+    q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("btn-app-download").addEventListener("click", triggerUniversalDDownload);
+    q("btn-app-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("download-access-form").addEventListener("submit", handleDownloadAccessSubmit);
     q("btn-room-favorite").addEventListener("click", toggleActiveNavFavorite);
     q("member-action-dm").addEventListener("click", handleMemberDMAction);
     q("member-action-block").addEventListener("click", handleMemberBlockAction);
@@ -4395,6 +4465,7 @@
         closeModal("unlock-modal");
         closeModal("media-modal");
         closeModal("guide-modal");
+        closeModal("download-access-modal");
         closeSidebar();
         closeInspector();
       }
@@ -4423,6 +4494,9 @@
       }
       if (target === q("guide-modal")) {
         closeModal("guide-modal");
+      }
+      if (target === q("download-access-modal")) {
+        closeModal("download-access-modal");
       }
     });
 

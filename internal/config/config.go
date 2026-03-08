@@ -17,6 +17,7 @@ type Config struct {
 	UploadsDir          string
 	StaticDir           string
 	OpsToken            string
+	DownloadPassword    string
 	SafeMode            bool
 	OpenBrowser         bool
 	BackupRetentionDays int
@@ -51,6 +52,7 @@ func Load() Config {
 		UploadsDir:          uploadsDir,
 		StaticDir:           staticDir,
 		OpsToken:            strings.TrimSpace(os.Getenv("UNIVERSALD_OPS_TOKEN")),
+		DownloadPassword:    strings.TrimSpace(os.Getenv("UNIVERSALD_DOWNLOAD_PASSWORD")),
 		SafeMode:            envBool("UNIVERSALD_SAFE_MODE", true),
 		OpenBrowser:         envBool("UNIVERSALD_OPEN", defaultOpenBrowser()),
 		BackupRetentionDays: envInt("UNIVERSALD_BACKUP_RETENTION_DAYS", 14),
