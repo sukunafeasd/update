@@ -18,6 +18,21 @@
     { id: "nego-dramias-ia", slug: "nego-dramias-ia", label: "Nego Dramias", copy: "IA útil, gaúcha e funcional.", icon: "🤠", theme: "assistente", accent: "ia" },
     { id: "apps-lab", slug: "apps-lab", label: "Apps Lab", copy: "Sala técnica privada do admin.", icon: "🛠️", theme: "admin lab", accent: "restrito" }
   ];
+  PRIMARY_NAV.splice(5, 0, { id: "coisas", slug: "coisas", label: "Coisas", copy: "Canto estranho com senha e cheiro de segredinho.", icon: "🥔", theme: "cofre torto", accent: "senha" });
+  PRIMARY_NAV.push({ id: "sus", kind: "sus", label: "???", copy: "Nao era pra clicar aqui, vivente.", icon: "👀", theme: "anomalia", accent: "sus" });
+  var SUS_WARNING_LINES = [
+    "Certeza que tu quer saber o que tem do outro lado?",
+    "Bah... ainda da tempo de fingir que nem viu isso.",
+    "Eu no teu lugar largava esse botao quieto.",
+    "Ultimo aviso, vivente. Depois nao reclama do destino."
+  ];
+  var SUS_TARGET_URL = "https://youtu.be/L-RQo8D7c3I?si=1tlBey4A2B40GS7W";
+  var SUS_POSITIONS = [
+    { x: 0, y: 0 },
+    { x: 28, y: -16 },
+    { x: -24, y: 18 },
+    { x: 18, y: 26 }
+  ];
   var LOGIN_ERROR_LINES = [
     "\uD83E\uDD23 Bah... essa senha veio torta.",
     "\uD83D\uDE35 Acesso negado, campeao.",
@@ -120,7 +135,9 @@
     connectionStatus: "syncing",
     lastStreamAt: 0,
     appInstalled: false,
-    appInstallSeenAt: 0
+    appInstallSeenAt: 0,
+    susClicks: 0,
+    susPositionIndex: 0
   };
 
   function readStoredSessionId() {
@@ -239,6 +256,20 @@
 
   function isAppsLabRoom(room) {
     return !!(room && room.slug === "apps-lab");
+  }
+
+  function isSusView() {
+    return state.activeNavId === "sus";
+  }
+
+  function currentSusWarning() {
+    var index = Math.max(0, Math.min(SUS_WARNING_LINES.length - 1, Number(state.susClicks || 0)));
+    return SUS_WARNING_LINES[index] || SUS_WARNING_LINES[0];
+  }
+
+  function currentSusPosition() {
+    var index = Math.max(0, Math.min(SUS_POSITIONS.length - 1, Number(state.susPositionIndex || 0)));
+    return SUS_POSITIONS[index] || SUS_POSITIONS[0];
   }
 
   function presenceByUserId(userId) {
@@ -475,6 +506,9 @@
     if (!nav) {
       return null;
     }
+    if (nav.kind === "sus") {
+      return null;
+    }
     if (nav.kind === "dm") {
       return primaryDirectRoom();
     }
@@ -509,6 +543,9 @@
   function navVisible(nav) {
     if (!nav) {
       return false;
+    }
+    if (nav.kind === "sus") {
+      return true;
     }
     if (nav.kind === "dm") {
       return true;
@@ -793,6 +830,12 @@
   function dashboardQuicklineItems(room, mode, attachments) {
     var onlineNow = state.online.filter(function(item) { return item.online; });
     var chips = [];
+    if (isSusView()) {
+      chips.push("aba suspeita armada");
+      chips.push((4 - Math.min(4, Number(state.susClicks || 0))) + " avisos antes do abismo");
+      chips.push("nao era pra clicar");
+      return chips;
+    }
     if (isMembersHub()) {
       chips.push(onlineNow.length + " online agora");
       chips.push(state.online.filter(function(item) { return String(item.role || "") === "admin" && item.online; }).length + " admins ativos");
@@ -1268,6 +1311,9 @@
   }
 
   function roomModeLabel(room, mode) {
+    if (isSusView()) {
+      return "sus";
+    }
     if (isMembersHub()) {
       return "membros";
     }
@@ -1293,6 +1339,9 @@
   }
 
   function roomPulseLabel(room) {
+    if (isSusView()) {
+      return "anomalia";
+    }
     var total = currentRoomMessages().length;
     if (isMembersHub()) {
       return "radar do grupo";
@@ -1316,6 +1365,9 @@
   }
 
   function negoDashboardTip(room, mode) {
+    if (isSusView()) {
+      return "Bah... se tu insiste nessa aba, depois aguenta o que vier do outro lado.";
+    }
     if (hasUploadingPendingUploads()) {
       return "Bah, segura um pouco que ainda tem upload subindo no motor.";
     }
@@ -1638,7 +1690,8 @@
     var sets = {
       ok: [620, 760],
       warn: [420, 320],
-      err: [180, 140]
+      err: [180, 140],
+      sus: [97, 131, 83]
     };
     if (!state.audioEnabled || !AudioCtor || !sets[kind]) {
       return;
@@ -1654,15 +1707,15 @@
         var oscillator = state.audioContext.createOscillator();
         var gain = state.audioContext.createGain();
         var startAt = state.audioContext.currentTime + (index * 0.06);
-        oscillator.type = kind === "err" ? "sawtooth" : "triangle";
+        oscillator.type = kind === "err" ? "sawtooth" : (kind === "sus" ? "square" : "triangle");
         oscillator.frequency.setValueAtTime(frequency, startAt);
         gain.gain.setValueAtTime(0.0001, startAt);
-        gain.gain.exponentialRampToValueAtTime(kind === "warn" ? 0.018 : 0.028, startAt + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.14);
+        gain.gain.exponentialRampToValueAtTime(kind === "warn" ? 0.018 : (kind === "sus" ? 0.016 : 0.028), startAt + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + (kind === "sus" ? 0.22 : 0.14));
         oscillator.connect(gain);
         gain.connect(state.audioContext.destination);
         oscillator.start(startAt);
-        oscillator.stop(startAt + 0.16);
+        oscillator.stop(startAt + (kind === "sus" ? 0.24 : 0.16));
       });
     } catch (e) {}
   }
@@ -1951,7 +2004,10 @@
     }
     if (hasPrimaryNavId(preferredNavId)) {
       preferredNav = navDefinition(preferredNavId);
-      if (preferredNav.id === "diretas" && !primaryDirectRoom()) {
+      if (preferredNav.id === "sus") {
+        state.activeNavId = "sus";
+        state.activeRoomId = 0;
+      } else if (preferredNav.id === "diretas" && !primaryDirectRoom()) {
         state.activeNavId = "diretas";
         state.activeRoomId = 0;
       } else if (navRoom(preferredNav)) {
@@ -1971,6 +2027,8 @@
     setConnectionStatus("syncing");
     if (state.activeRoomId) {
       selectRoom(state.activeRoomId, true);
+    } else if (state.activeNavId === "sus") {
+      selectPrimaryNav("sus", true);
     }
     if (state.viewer && state.viewer.role === "owner") {
       loadUsers();
@@ -1989,6 +2047,7 @@
     renderHeaderAndRoomState();
     renderDashboard();
     renderAppsLabDeck();
+    renderSusPanel();
     renderPinnedStrip();
     renderUnreadBanner();
     renderPendingAttachment();
@@ -2052,7 +2111,8 @@
       "<span class='room-kind kind-dm'>dm</span>" +
       "<span class='room-kind kind-media'>midia</span>" +
       "<span class='room-kind kind-dev'>ia</span>" +
-      "<span class='room-kind kind-admin'>admin</span>";
+      "<span class='room-kind kind-admin'>admin</span>" +
+      "<span class='room-kind kind-sus'>sus</span>";
   }
 
   function syncDocumentTitle() {
@@ -2110,6 +2170,9 @@
       }
       button.type = "button";
       button.className = "room-item" + (state.activeNavId === nav.id ? " active" : "");
+      if (nav.kind === "sus") {
+        button.className += " sus-room";
+      }
       if (isFavoriteNavId(nav.id)) {
         button.className += " favorite";
       }
@@ -2229,8 +2292,30 @@
 
     q("composer-form").classList.toggle("hidden", hubMode);
     q("conversation-panel").classList.toggle("apps-lab-mode", !!isAppsLabRoom(room));
+    q("conversation-panel").classList.toggle("sus-mode", isSusView());
     q("message-stream").classList.remove("hidden");
     q("typing-indicator").classList.remove("hidden");
+    q("sus-panel").classList.add("hidden");
+
+    if (isSusView()) {
+      q("room-icon").textContent = "??";
+      q("room-title").textContent = "???";
+      q("room-description").textContent = "Aba pegadinha, estranha e mal encarada. Se clicar demais, tu some dali pro outro lado.";
+      q("overview-room-name").textContent = "???";
+      q("overview-room-copy").textContent = "Area suspeita sem chat normal. Aqui so tem misterio, aviso e um botao maldito.";
+      q("room-members-pill").textContent = "sus";
+      q("stat-version").textContent = "v" + String(state.version || 0);
+      q("room-type-badge").className = "badge kind-sus";
+      q("room-type-badge").textContent = "sus";
+      q("room-access-badge").className = "badge badge-lock";
+      q("room-access-badge").textContent = "na mexe";
+      q("composer-form").classList.add("hidden");
+      q("message-stream").classList.add("hidden");
+      q("typing-indicator").classList.add("hidden");
+      stateCard.classList.add("hidden");
+      q("sus-panel").classList.remove("hidden");
+      return;
+    }
 
     if (isMembersHub()) {
       q("room-icon").textContent = "ON";
@@ -2363,6 +2448,16 @@
     var quickline = q("dashboard-quickline");
     q("dashboard-online-now").textContent = String(onlineNow);
     q("dashboard-theme").textContent = themeLabel(state.viewer && state.viewer.theme || "matrix");
+    if (isSusView()) {
+      q("dashboard-last-activity").textContent = Number(state.susClicks || 0) ? ("clique " + Number(state.susClicks || 0)) : "silencio ruim";
+      q("dashboard-room-files").textContent = "0";
+      q("dashboard-room-mode").textContent = "sus // anomalia";
+      q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
+      quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
+        return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
+      }).join("");
+      return;
+    }
     if (isMembersHub()) {
       q("dashboard-last-activity").textContent = onlineNow ? (onlineNow + " ativos") : "base vazia";
       q("dashboard-room-files").textContent = String(state.online.length);
@@ -2417,6 +2512,52 @@
     q("apps-build-copy").textContent = UNIVERSALD_META.version;
     q("apps-size-copy").textContent = UNIVERSALD_META.sizeLabel;
     q("apps-sha-copy").textContent = UNIVERSALD_META.sha256.slice(0, 12) + "...";
+  }
+
+  function renderSusPanel() {
+    var wrap = q("sus-panel");
+    var position = currentSusPosition();
+    var warning = currentSusWarning();
+    if (!wrap) {
+      return;
+    }
+    if (!isSusView()) {
+      wrap.classList.add("hidden");
+      wrap.innerHTML = "";
+      return;
+    }
+    wrap.classList.remove("hidden");
+      wrap.innerHTML =
+        "<div class='sus-shell'>" +
+          "<span class='sus-eyebrow'>aba suspeita</span>" +
+          "<h3>Tem alguma coisa errada aqui.</h3>" +
+          "<p class='sus-copy'>Essa area nao conversa, nao explica e nao ajuda. Ela so provoca, treme e te encara de volta.</p>" +
+          "<div class='sus-warning'>" + esc(warning) + "</div>" +
+          "<div class='sus-stage'>" +
+            "<button type='button' class='sus-trigger' data-action='sus-trigger' style='left: calc(50% + " + Number(position.x || 0) + "px); top: calc(50% + " + Number(position.y || 0) + "px);'>abrir mesmo assim?</button>" +
+          "</div>" +
+        "<div class='inline-row'>" +
+          "<span class='ghost-pill'>cliques: " + Number(state.susClicks || 0) + "/4</span>" +
+          "<span class='ghost-pill'>status: anomalia</span>" +
+          "<span class='ghost-pill'>destino: desconhecido</span>" +
+        "</div>" +
+      "</div>";
+  }
+
+  function handleSusTrigger() {
+    state.susClicks = Number(state.susClicks || 0) + 1;
+    state.susPositionIndex = Math.min(SUS_POSITIONS.length - 1, Number(state.susPositionIndex || 0) + 1);
+    playTone("sus");
+    renderSusPanel();
+    renderDashboard();
+    if (state.susClicks >= 4) {
+      toast("Bah... agora tu vai ter que ver o que tem do outro lado.", "warn");
+      window.setTimeout(function() {
+        window.location.assign(SUS_TARGET_URL);
+      }, 900);
+      return;
+    }
+    toast(currentSusWarning(), "warn");
   }
 
   function renderPendingAttachment() {
@@ -2912,6 +3053,12 @@
     var onlineItems = state.online.filter(function(item) { return item.online; });
     stream.innerHTML = "";
     stream.classList.remove("hidden");
+    if (isSusView()) {
+      stream.classList.add("hidden");
+      renderSusPanel();
+      renderTypingIndicator();
+      return;
+    }
     if (isMembersHub() || isDirectHubEmpty()) {
       if (!onlineItems.length) {
         stream.innerHTML = "<div class='empty-state'>Ninguem esta online agora. Quando o grupo voltar, esse hub enche sozinho.</div>";
@@ -3003,6 +3150,11 @@
 
   function renderTypingIndicator() {
     var wrap = q("typing-indicator");
+    if (isSusView()) {
+      wrap.classList.add("hidden");
+      wrap.textContent = "";
+      return;
+    }
     if (isHubView()) {
       wrap.classList.add("hidden");
       wrap.textContent = "";
@@ -3504,6 +3656,38 @@
     state.highlightMessageId = 0;
     saveStoredActiveNavId(state.activeNavId);
     nudgeConversation();
+    if (nav.kind === "sus") {
+      state.activeRoomId = 0;
+      saveStoredActiveRoomId(0);
+      renderRooms();
+      renderRails();
+      renderHeaderAndRoomState();
+      renderDashboard();
+      renderAppsLabDeck();
+      renderSusPanel();
+      renderActivity();
+      renderEvents();
+      renderMoments();
+      renderUnreadBanner();
+      renderPendingAttachment();
+      renderReplyChip();
+      renderEditChip();
+      renderMessages(0);
+      renderFiles();
+      state.polls = [];
+      renderPolls();
+      renderAdminPanels();
+      renderInspectorTabs();
+      sendPresence();
+      if (!silent) {
+        toast("Bah... tu abriu a aba suspeita. Depois nao reclama.", "warn");
+      }
+      if (state.compactLayout) {
+        closeSidebar();
+        closeInspector();
+      }
+      return;
+    }
     if (nav.kind === "dm" && !room) {
       state.activeRoomId = 0;
       saveStoredActiveRoomId(0);
@@ -3617,6 +3801,10 @@
     }
     if (hasErroredPendingUploads()) {
       toast("Resolve os uploads que falharam antes de enviar.", "warn");
+      return;
+    }
+    if (isSusView()) {
+      toast("Nessa aba tu nao conversa. Tu so provoca o destino.", "warn");
       return;
     }
     if (!room) {
@@ -5361,6 +5549,8 @@
         deleteEvent(Number(target.getAttribute("data-event-id")));
       } else if (action === "delete-poll") {
         deletePoll(Number(target.getAttribute("data-poll-id")));
+      } else if (action === "sus-trigger") {
+        handleSusTrigger();
       }
     });
   }

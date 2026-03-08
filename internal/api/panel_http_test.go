@@ -79,7 +79,7 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 
 	login := mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
 		"login":    "dief",
-		"password": "PainelDief#2026",
+		"password": "valorant",
 	}, nil, http.StatusOK)
 	if login["ok"] != true {
 		t.Fatalf("expected login ok, got %#v", login["ok"])

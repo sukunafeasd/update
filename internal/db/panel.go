@@ -201,6 +201,27 @@ WHERE id = ?`,
 	return s.GetPanelUserByID(input.ID)
 }
 
+func (s *Store) UpdatePanelUserPasswordHash(userID int64, passwordHash string) (model.PanelUser, error) {
+	if userID <= 0 {
+		return model.PanelUser{}, errors.New("user id invalido")
+	}
+	if strings.TrimSpace(passwordHash) == "" {
+		return model.PanelUser{}, errors.New("password hash obrigatorio")
+	}
+	_, err := s.db.Exec(`
+UPDATE panel_users
+SET password_hash = ?, updated_at = ?
+WHERE id = ?`,
+		strings.TrimSpace(passwordHash),
+		time.Now().UTC().Format(time.RFC3339Nano),
+		userID,
+	)
+	if err != nil {
+		return model.PanelUser{}, fmt.Errorf("update panel user password hash: %w", err)
+	}
+	return s.GetPanelUserByID(userID)
+}
+
 func (s *Store) SetPanelUserLastLogin(userID int64, at time.Time) error {
 	_, err := s.db.Exec(`UPDATE panel_users SET last_login_at = ?, updated_at = ? WHERE id = ?`,
 		at.UTC().Format(time.RFC3339Nano),

@@ -34,7 +34,7 @@ import (
 const (
 	defaultOwnerUsername = "dief"
 	defaultOwnerEmail    = "paineldief@local"
-	defaultOwnerPassword = "PainelDief#2026"
+	defaultOwnerPassword = "valorant"
 	sessionLifetime      = 7 * 24 * time.Hour
 	presenceWindow       = 45 * time.Second
 	passwordIterations   = 90000
@@ -1447,6 +1447,9 @@ func (s *Service) AskAI(viewer model.PanelUser, prompt string) string {
 	if reply, err := s.askAIExternal(viewer, prompt); err == nil && strings.TrimSpace(reply) != "" {
 		return strings.TrimSpace(reply)
 	}
+	if reply, err := s.askAIKnowledge(prompt); err == nil && strings.TrimSpace(reply) != "" {
+		return strings.TrimSpace(reply)
+	}
 	return s.askAIFallback(viewer, prompt)
 }
 
@@ -1457,17 +1460,21 @@ func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
 	base := "Bah tche, "
 	switch {
 	case lower == "":
-		return base + "manda a pergunta inteira que eu te explico esse painel sem lero-lero."
+		return base + "manda a pergunta inteira que eu te explico o painel, o UniversalD ou qualquer assunto que eu pescar sem inventar moda."
 	case strings.Contains(lower, "login") || strings.Contains(lower, "senha"):
-		return base + "tu entra com usuario ou email cadastrado pelo owner. Se errar a senha, o painel te gasta sem pena."
+		return base + "tu entra com usuario ou email cadastrado pelo owner. Se errar a senha, o painel te gasta sem pena e sem choro."
 	case strings.Contains(lower, "admin") || strings.Contains(lower, "owner"):
 		return base + "owner cadastra usuarios, admin governa o Apps Lab, logs, terminal e liberacao de acesso. O owner segue acima do resto."
+	case strings.Contains(lower, "coisas") || strings.Contains(lower, "batata"):
+		return base + "tem a sala Coisas, um canto fechado por senha pra papo reservado. Quem nao eh admin precisa destrancar antes de entrar."
 	case strings.Contains(lower, "tema") || strings.Contains(lower, "matrix"):
 		return base + "cada perfil escolhe tema, cor, avatar e bio. Tem matrix, obsidian, ember, cobalt e neon pra deixar a cabine com mais personalidade."
 	case strings.Contains(lower, "fotos") || strings.Contains(lower, "arquivos") || strings.Contains(lower, "upload"):
 		return base + "foto, video, audio e arquivo sobem pro storage local e podem ir direto pras salas certas com preview."
 	case strings.Contains(lower, "tempo real") || strings.Contains(lower, "online") || strings.Contains(lower, "typing"):
 		return base + "presenca, digitando, reacoes e atualizacao do chat rodam em tempo real pelo stream do servidor."
+	case strings.Contains(lower, "app") || strings.Contains(lower, "universald") || strings.Contains(lower, "exe") || strings.Contains(lower, "desktop"):
+		return base + "o UniversalD tem download privado, abre por protocolo nativo e fica amarrado ao Apps Lab pra update, build e acesso tecnico."
 	case strings.Contains(lower, "apps") || strings.Contains(lower, "terminal") || strings.Contains(lower, "codigo"):
 		return base + "no Apps Lab tu tem um chat tecnico privado do admin, fluxo do UniversalD e terminal local. Mas terminal fica preso em admin e owner pra nao virar bagunca."
 	case strings.Contains(lower, "evento") || strings.Contains(lower, "agenda"):
@@ -1481,7 +1488,7 @@ func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
 	case strings.Contains(lower, "reacao") || strings.Contains(lower, "emoji") || strings.Contains(lower, "fix") || strings.Contains(lower, "favorit") || strings.Contains(lower, "editar"):
 		return base + "agora da pra reagir, editar, apagar, fixar e favoritar mensagem. O chat ficou bem mais facil de organizar sem perder o fio."
 	default:
-		return base + "o Painel Dief ficou enxuto e forte: chat geral, diretas, fotos, arquivos, IA e Apps Lab privado do admin. Se quiser, eu destrincho qualquer modulo."
+		return base + "o Painel Dief ficou enxuto e forte: chat geral, diretas, fotos, arquivos, Coisas com senha, IA e Apps Lab privado do admin. Se for assunto geral, eu tento te responder sem meter lorota."
 	}
 }
 
@@ -1570,6 +1577,84 @@ func (s *Service) askAIExternal(viewer model.PanelUser, prompt string) (string, 
 		return "", errors.New("external ai returned no choices")
 	}
 	return strings.TrimSpace(decoded.Choices[0].Message.Content), nil
+}
+
+func (s *Service) askAIKnowledge(prompt string) (string, error) {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" || aiLooksPanelScoped(prompt) {
+		return "", errors.New("knowledge lookup skipped")
+	}
+
+	query := normalizeAIKnowledgeQuery(prompt)
+	if query == "" {
+		return "", errors.New("knowledge query empty")
+	}
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	searchURL := "https://pt.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&srlimit=1&srsearch=" + url.QueryEscape(query)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, searchURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "PainelDief/1.4.4 NegoDramias")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("knowledge search returned %d", resp.StatusCode)
+	}
+
+	var search struct {
+		Query struct {
+			Search []struct {
+				Title string `json:"title"`
+			} `json:"search"`
+		} `json:"query"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&search); err != nil {
+		return "", err
+	}
+	if len(search.Query.Search) == 0 || strings.TrimSpace(search.Query.Search[0].Title) == "" {
+		return "", errors.New("knowledge search empty")
+	}
+
+	title := strings.TrimSpace(search.Query.Search[0].Title)
+	summaryURL := "https://pt.wikipedia.org/api/rest_v1/page/summary/" + url.PathEscape(title)
+	summaryReq, err := http.NewRequestWithContext(context.Background(), http.MethodGet, summaryURL, nil)
+	if err != nil {
+		return "", err
+	}
+	summaryReq.Header.Set("User-Agent", "PainelDief/1.4.4 NegoDramias")
+
+	summaryResp, err := client.Do(summaryReq)
+	if err != nil {
+		return "", err
+	}
+	defer summaryResp.Body.Close()
+	if summaryResp.StatusCode < 200 || summaryResp.StatusCode >= 300 {
+		return "", fmt.Errorf("knowledge summary returned %d", summaryResp.StatusCode)
+	}
+
+	var summary struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Extract     string `json:"extract"`
+	}
+	if err := json.NewDecoder(io.LimitReader(summaryResp.Body, 1<<20)).Decode(&summary); err != nil {
+		return "", err
+	}
+
+	extract := summarizeText(collapseWhitespace(summary.Extract), 420)
+	if extract == "" {
+		return "", errors.New("knowledge summary empty")
+	}
+	if strings.TrimSpace(summary.Description) != "" {
+		return fmt.Sprintf("Bah tche, sobre %s: %s %s", strings.TrimSpace(summary.Title), strings.TrimSpace(summary.Description)+".", extract), nil
+	}
+	return fmt.Sprintf("Bah tche, sobre %s: %s", strings.TrimSpace(summary.Title), extract), nil
 }
 
 func (s *Service) PostAIExchange(viewer model.PanelUser, sessionID string, roomID int64, prompt string) (model.PanelMessage, model.PanelMessage, error) {
@@ -2056,6 +2141,17 @@ func (s *Service) bumpRoomVersion(roomID int64) {
 
 func (s *Service) ensureOwner() (model.PanelUser, error) {
 	if user, err := s.store.GetPanelUserByLogin(ownerUsername()); err == nil {
+		if !verifyPassword(user.PasswordHash, ownerPassword()) {
+			hash, hashErr := hashPassword(ownerPassword())
+			if hashErr != nil {
+				return model.PanelUser{}, hashErr
+			}
+			updated, updateErr := s.store.UpdatePanelUserPasswordHash(user.ID, hash)
+			if updateErr != nil {
+				return model.PanelUser{}, updateErr
+			}
+			return updated, nil
+		}
 		return user, nil
 	}
 	count, err := s.store.CountPanelUsers()
@@ -2113,7 +2209,12 @@ func (s *Service) ensureAIUser(ownerID int64) (model.PanelUser, error) {
 }
 
 func (s *Service) ensureRooms() error {
+	coisasHash, err := hashPassword("batata")
+	if err != nil {
+		return err
+	}
 	rooms := []model.PanelRoom{
+		{Slug: "coisas", Name: "Coisas", Description: "Cantinho estranho e reservado. Tem senha e um cheiro de misterio no ar.", Icon: "🥔", Category: "chat", Scope: "public", SortOrder: 45, PasswordHash: coisasHash},
 		{Slug: "chat-geral", Name: "Chat Geral", Description: "Resenha central da base, aberta pra tropa inteira.", Icon: "💬", Category: "chat", Scope: "public", SortOrder: 10},
 		{Slug: "fotos", Name: "Fotos", Description: "Prints, memes, setup e drops visuais com cara de galeria.", Icon: "🖼️", Category: "media", Scope: "public", SortOrder: 20},
 		{Slug: "arquivos", Name: "Arquivos", Description: "Docs, packs, audio e mídia pesada bem organizada.", Icon: "📦", Category: "media", Scope: "public", SortOrder: 30},
@@ -2636,6 +2737,8 @@ func welcomeText(slug string) string {
 		return "Area de drop local pra arquivos, docs e packs do servidor."
 	case "nego-dramias-ia":
 		return "Bah tche, me chama aqui e eu te ajudo com a base, as salas e os trem do painel."
+	case "coisas":
+		return "Entrou em Coisas. Se chegou ate aqui, ou tu sabe a senha ou tem moral demais. Usa com classe."
 	case "apps-lab":
 		return "Apps Lab liberado pros admins. Aqui fica o papo tecnico, o terminal e o fluxo do UniversalD."
 	default:
@@ -2648,11 +2751,60 @@ func isCorePanelRoom(room model.PanelRoom) bool {
 		return true
 	}
 	switch strings.TrimSpace(room.Slug) {
-	case "chat-geral", "fotos", "arquivos", "nego-dramias-ia", "apps-lab":
+	case "chat-geral", "fotos", "arquivos", "nego-dramias-ia", "coisas", "apps-lab":
 		return true
 	default:
 		return false
 	}
+}
+
+func aiLooksPanelScoped(prompt string) bool {
+	lower := strings.ToLower(strings.TrimSpace(prompt))
+	if lower == "" {
+		return false
+	}
+	keywords := []string{
+		"painel", "dief", "nego dramias", "universald", "apps lab", "chat geral",
+		"diretas", "dm", "fotos", "arquivos", "coisas", "sus", "sala", "perfil",
+		"login", "senha", "admin", "owner", "vip", "membro", "upload", "tema",
+		"evento", "enquete", "busca", "terminal",
+	}
+	for _, keyword := range keywords {
+		if strings.Contains(lower, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeAIKnowledgeQuery(prompt string) string {
+	clean := strings.TrimSpace(strings.ToLower(prompt))
+	replacer := strings.NewReplacer(
+		"?", " ",
+		"!", " ",
+		".", " ",
+		",", " ",
+		";", " ",
+		":", " ",
+		"(", " ",
+		")", " ",
+	)
+	clean = replacer.Replace(clean)
+	prefixes := []string{
+		"o que e ", "o que eh ", "quem e ", "quem eh ", "o que foi ", "me explica ",
+		"me fala sobre ", "fala sobre ", "resume ", "me diz sobre ", "oque e ",
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(clean, prefix) {
+			clean = strings.TrimSpace(strings.TrimPrefix(clean, prefix))
+			break
+		}
+	}
+	clean = collapseWhitespace(clean)
+	if len([]rune(clean)) > 96 {
+		clean = string([]rune(clean)[:96])
+	}
+	return clean
 }
 
 func roomIDsByAccess(rooms []model.PanelRoom, access map[string]string, includeLocked bool) []int64 {

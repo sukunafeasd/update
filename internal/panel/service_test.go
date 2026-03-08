@@ -612,7 +612,7 @@ func TestBootstrapExposesOnlyCoreRoomsAndProtectsAppsLab(t *testing.T) {
 		}
 	}
 
-	for _, coreSlug := range []string{"chat-geral", "fotos", "arquivos", "nego-dramias-ia"} {
+	for _, coreSlug := range []string{"chat-geral", "fotos", "arquivos", "nego-dramias-ia", "coisas"} {
 		if findRoomBySlug(ownerBootstrap.Rooms, coreSlug).ID == 0 {
 			t.Fatalf("owner missing core room %s", coreSlug)
 		}
@@ -626,6 +626,21 @@ func TestBootstrapExposesOnlyCoreRoomsAndProtectsAppsLab(t *testing.T) {
 	}
 	if findRoomBySlug(memberBootstrap.Rooms, "apps-lab").ID != 0 {
 		t.Fatalf("member should not see apps-lab")
+	}
+	if memberBootstrap.RoomAccess["coisas"] != "locked" {
+		t.Fatalf("member should see coisas as locked, got %q", memberBootstrap.RoomAccess["coisas"])
+	}
+	coisasRoom := findRoomBySlug(memberBootstrap.Rooms, "coisas")
+	if coisasRoom.ID == 0 {
+		t.Fatalf("member missing coisas room")
+	}
+	if err := svc.UnlockRoom(member, memberSession.ID, coisasRoom.ID, "batata"); err != nil {
+		t.Fatalf("unlock coisas room: %v", err)
+	}
+	if messages, _, err := svc.ListMessages(member, memberSession.ID, coisasRoom.ID, 10); err != nil {
+		t.Fatalf("list coisas room after unlock: %v", err)
+	} else if len(messages) == 0 {
+		t.Fatalf("expected welcome message in coisas room after unlock")
 	}
 }
 
@@ -707,6 +722,42 @@ func TestPanelPollCreateAndVoteFlow(t *testing.T) {
 	}
 	if len(listed) != 0 {
 		t.Fatalf("expected no polls after delete, got %+v", listed)
+	}
+}
+
+func TestEnsureBootstrappedRotatesOwnerPasswordToConfiguredSecret(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "panel-owner-password.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	oldHash, err := hashPassword("PainelDief#2026")
+	if err != nil {
+		t.Fatalf("hash old owner password: %v", err)
+	}
+	if _, err := store.CreatePanelUser(model.PanelUser{
+		Username:     ownerUsername(),
+		Email:        ownerEmail(),
+		DisplayName:  "Dief antigo",
+		Role:         "owner",
+		Theme:        "matrix",
+		AccentColor:  "#7bff00",
+		Status:       "online",
+		PasswordHash: oldHash,
+	}); err != nil {
+		t.Fatalf("seed owner: %v", err)
+	}
+
+	svc := NewService(store, filepath.Join(t.TempDir(), "uploads"))
+	if err := svc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+	if _, _, err := svc.Login(ownerUsername(), ownerPassword()); err != nil {
+		t.Fatalf("expected configured owner password to work, got %v", err)
+	}
+	if _, _, err := svc.Login(ownerUsername(), "PainelDief#2026"); err == nil {
+		t.Fatalf("expected legacy owner password to be rejected after rotation")
 	}
 }
 

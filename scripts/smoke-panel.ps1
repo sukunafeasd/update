@@ -1,7 +1,7 @@
 param(
   [string]$BaseUrl = "http://127.0.0.1:7788",
   [string]$Login = "dief",
-  [string]$Password = "PainelDief#2026",
+  [string]$Password = "valorant",
   [string]$OpsToken = "",
   [switch]$MutatingChecks
 )
