@@ -327,6 +327,70 @@ func TestEmbeddedDownloadRouteRequiresAccess(t *testing.T) {
 	}
 }
 
+func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-import.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "production",
+		DBPath:   filepath.Join(root, "server-import.db"),
+		OpsToken: "ops-secret",
+	})
+
+	exportReq := httptest.NewRequest(http.MethodGet, "/api/ops/export", nil)
+	exportReq.RemoteAddr = "198.51.100.20:443"
+	exportReq.Header.Set("Authorization", "Bearer ops-secret")
+	exportRec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(exportRec, exportReq)
+	if exportRec.Code != http.StatusOK {
+		t.Fatalf("expected export 200, got %d", exportRec.Code)
+	}
+
+	owner, _, err := panelSvc.Login("dief", "valorant")
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+	if _, err := panelSvc.CreateUser(owner, "restore-alvo", "restore@paineldief.local", "Restore#2026", "Restore Alvo", "member"); err != nil {
+		t.Fatalf("create extra user before import: %v", err)
+	}
+	summaryBefore, err := panelSvc.OpsSummary()
+	if err != nil {
+		t.Fatalf("ops summary before import: %v", err)
+	}
+	if summaryBefore.Users < 3 {
+		t.Fatalf("expected extra user before import, got users=%d", summaryBefore.Users)
+	}
+
+	importReq := httptest.NewRequest(http.MethodPost, "/api/ops/import", bytes.NewReader(exportRec.Body.Bytes()))
+	importReq.RemoteAddr = "198.51.100.20:443"
+	importReq.Header.Set("Authorization", "Bearer ops-secret")
+	importRec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(importRec, importReq)
+	if importRec.Code != http.StatusOK {
+		t.Fatalf("expected import 200, got %d: %s", importRec.Code, importRec.Body.String())
+	}
+
+	summaryAfter, err := panelSvc.OpsSummary()
+	if err != nil {
+		t.Fatalf("ops summary after import: %v", err)
+	}
+	if summaryAfter.Users >= summaryBefore.Users {
+		t.Fatalf("expected import to roll back extra user, before=%d after=%d", summaryBefore.Users, summaryAfter.Users)
+	}
+	if _, err := store.GetPanelUserByLogin("restore-alvo"); err == nil {
+		t.Fatalf("expected imported snapshot to remove extra user")
+	}
+}
+
 func TestEmbeddedDownloadRouteUnlocksWithPasswordCookie(t *testing.T) {
 	srv := NewPanelServer("", "1.4.4", true, nil, ServerOptions{DownloadPassword: "segredo-app"})
 

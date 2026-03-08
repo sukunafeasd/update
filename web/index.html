@@ -50,6 +50,8 @@
             <button id="btn-login-open-app" class="btn btn-primary" type="button">Abrir no app</button>
             <button id="btn-login-download" class="btn btn-ghost btn-download" type="button">Baixar UniversalD</button>
             <button id="btn-login-guide" class="btn btn-ghost" type="button">Central do App</button>
+            <button id="btn-login-request-access" class="btn btn-ghost" type="button">Pedir pra entrar</button>
+            <button id="btn-login-complete-access" class="btn btn-ghost" type="button">Tenho codigo</button>
             <span class="ghost-pill">Windows app oficial</span>
             <span id="login-app-status-pill" class="ghost-pill">app nao detectado</span>
             <span id="login-app-size-pill" class="ghost-pill">16 MB</span>
@@ -472,7 +474,22 @@
                 </select>
               <button id="btn-create-user-submit" class="btn btn-primary" type="submit">Cadastrar pessoa</button>
               </form>
-              <div id="user-roster" class="roster-list"></div>
+              <div class="owner-admin-grid">
+                <section class="owner-admin-panel">
+                  <div class="utility-head compact-head">
+                    <h5>Pedidos pra entrar</h5>
+                    <span id="join-request-status-pill" class="ghost-pill">0 pendentes</span>
+                  </div>
+                  <div id="join-request-list" class="roster-list"></div>
+                </section>
+                <section class="owner-admin-panel">
+                  <div class="utility-head compact-head">
+                    <h5>Membros atuais</h5>
+                    <span id="user-roster-status-pill" class="ghost-pill">0 usuarios</span>
+                  </div>
+                  <div id="user-roster" class="roster-list"></div>
+                </section>
+              </div>
             </section>
           </section>
         </div>
@@ -602,6 +619,23 @@
           <button id="member-action-block" class="btn btn-ghost" type="button">Bloquear</button>
           <button id="member-action-mute" class="btn btn-ghost" type="button">Silenciar</button>
         </div>
+
+        <section id="member-moderation" class="member-moderation hidden">
+          <div class="utility-head compact-head">
+            <h4>Controle do dono</h4>
+            <span class="ghost-pill">owner</span>
+          </div>
+          <div class="inline-row social-actions">
+            <select id="member-role-select">
+              <option value="member">membro</option>
+              <option value="vip">vip</option>
+              <option value="admin">admin</option>
+            </select>
+            <button id="member-action-role-save" class="btn btn-ghost" type="button">Salvar cargo</button>
+            <button id="member-action-expel" class="btn btn-danger" type="button">Expulsar</button>
+          </div>
+          <p id="member-moderation-copy" class="section-summary">O dono consegue rebaixar, promover ou mandar embora.</p>
+        </section>
       </div>
     </div>
   </div>
@@ -749,6 +783,42 @@
         <span class="ghost-pill">Windows .exe</span>
         <span class="ghost-pill">acesso protegido</span>
       </div>
+    </div>
+  </div>
+
+  <div id="join-request-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card narrow">
+      <div class="modal-head">
+        <h3>Pedir pra entrar</h3>
+        <button data-close-modal="join-request-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+      <p>Manda teu email e teu nome. O dono recebe o pedido e decide se libera a porteira.</p>
+      <form id="join-request-form" class="stack-form">
+        <input id="join-request-email" type="email" placeholder="teu gmail" />
+        <input id="join-request-display" type="text" maxlength="60" placeholder="nome visivel" />
+        <textarea id="join-request-note" rows="3" maxlength="180" placeholder="fala quem tu e e por que quer entrar..."></textarea>
+        <button id="btn-join-request-submit" class="btn btn-primary" type="submit">Enviar pedido</button>
+      </form>
+      <p id="join-request-error" class="login-error hidden"></p>
+    </div>
+  </div>
+
+  <div id="join-complete-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card narrow">
+      <div class="modal-head">
+        <h3>Finalizar entrada</h3>
+        <button data-close-modal="join-complete-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+      <p>Se o dono aprovou teu pedido, cola aqui com o email, codigo e teus dados finais de acesso.</p>
+      <form id="join-complete-form" class="stack-form">
+        <input id="join-complete-email" type="email" placeholder="gmail aprovado" />
+        <input id="join-complete-code" type="text" maxlength="12" placeholder="codigo recebido" />
+        <input id="join-complete-username" type="text" maxlength="30" placeholder="usuario novo" />
+        <input id="join-complete-display" type="text" maxlength="60" placeholder="nome visivel" />
+        <input id="join-complete-password" type="password" maxlength="64" placeholder="cria tua senha" />
+        <button id="btn-join-complete-submit" class="btn btn-primary" type="submit">Criar acesso</button>
+      </form>
+      <p id="join-complete-error" class="login-error hidden"></p>
     </div>
   </div>
 

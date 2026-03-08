@@ -173,6 +173,42 @@ if ($MutatingChecks) {
   $profileCheck = Invoke-RestMethod -Uri "$BaseUrl/api/panel/social/profile?userId=$($createUserResp.user.id)" -WebSession $session3 -UseBasicParsing
   $result.userPersist = [bool]($profileCheck.profile.user.userId -eq $createUserResp.user.id)
 
+  $roleResp = Invoke-RestMethod -Uri "$BaseUrl/api/panel/users/role" -Method Post -WebSession $session3 -ContentType "application/json" -Body (@{
+    targetUserId = [int64]$createUserResp.user.id
+    role = "vip"
+  } | ConvertTo-Json)
+  $result.roleUpdate = [bool]($roleResp.user.role -eq "vip")
+
+  $guestSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+  $joinEmail = "join$stamp@local.test"
+  $joinResp = Invoke-RestMethod -Uri "$BaseUrl/api/panel/join-request" -Method Post -WebSession $guestSession -ContentType "application/json" -Body (@{
+    email = $joinEmail
+    displayName = "Join $stamp"
+    note = "smoke de entrada"
+  } | ConvertTo-Json)
+  $reviewResp = Invoke-RestMethod -Uri "$BaseUrl/api/panel/join-requests/review" -Method Post -WebSession $session3 -ContentType "application/json" -Body (@{
+    requestId = [int64]$joinResp.request.id
+    approve = $true
+    reviewNote = ""
+  } | ConvertTo-Json)
+  $joinCode = [string]$reviewResp.request.accessCode
+  $joinComplete = Invoke-RestMethod -Uri "$BaseUrl/api/panel/join-request/complete" -Method Post -WebSession $guestSession -ContentType "application/json" -Body (@{
+    email = $joinEmail
+    accessCode = $joinCode
+    username = "join$stamp"
+    displayName = "Join $stamp"
+    password = "Senha#654321"
+  } | ConvertTo-Json)
+  $result.joinRequest = [bool]($joinComplete.user.id -gt 0)
+
+  $expelResp = Invoke-RestMethod -Uri "$BaseUrl/api/panel/users/expel" -Method Post -WebSession $session3 -ContentType "application/json" -Body (@{
+    targetUserId = [int64]$createUserResp.user.id
+  } | ConvertTo-Json)
+  $result.expel = [bool]($expelResp.targetUserId -eq [int64]$createUserResp.user.id)
+  Invoke-RestMethod -Uri "$BaseUrl/api/panel/users/expel" -Method Post -WebSession $session3 -ContentType "application/json" -Body (@{
+    targetUserId = [int64]$joinComplete.user.id
+  } | ConvertTo-Json) | Out-Null
+
   Invoke-RestMethod -Uri "$BaseUrl/api/panel/profile" -Method Post -WebSession $session3 -ContentType "application/json" -Body (@{
     displayName = [string]$originalViewer.displayName
     bio = [string]$originalViewer.bio

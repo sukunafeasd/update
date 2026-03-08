@@ -918,9 +918,10 @@ func (s *Service) GetSocialProfile(viewer model.PanelUser, targetUserID int64) (
 	items := applyPresenceRelations([]model.PanelPresence{presence}, blockedIDs, mutedIDs, blockerIDs)
 	presence = items[0]
 	return model.PanelSocialProfile{
-		User:      presence,
-		CanDM:     targetUserID != viewer.ID && !presence.BlockedByViewer && !presence.HasBlockedViewer && strings.ToLower(presence.Role) != "ai",
-		CanManage: targetUserID == viewer.ID,
+		User:        presence,
+		CanDM:       targetUserID != viewer.ID && !presence.BlockedByViewer && !presence.HasBlockedViewer && strings.ToLower(presence.Role) != "ai",
+		CanManage:   targetUserID == viewer.ID,
+		CanModerate: strings.ToLower(strings.TrimSpace(viewer.Role)) == "owner" && targetUserID != viewer.ID && strings.ToLower(strings.TrimSpace(presence.Role)) != "owner",
 	}, nil
 }
 

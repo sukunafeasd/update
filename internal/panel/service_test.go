@@ -436,6 +436,76 @@ func TestPanelEventsCreateAndRSVPFlow(t *testing.T) {
 	}
 }
 
+func TestJoinRequestApprovalCompletionAndModerationFlow(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "panel-membership.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	svc := NewService(store, filepath.Join(t.TempDir(), "uploads"))
+	if err := svc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	owner, _, err := svc.Login(ownerUsername(), ownerPassword())
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+
+	request, err := svc.RequestJoinAccess("neo@paineldief.local", "Neo", "quero colar na base")
+	if err != nil {
+		t.Fatalf("request join access: %v", err)
+	}
+	if request.Status != "pending" {
+		t.Fatalf("expected pending request, got %q", request.Status)
+	}
+
+	requests, err := svc.ListJoinRequests(owner)
+	if err != nil {
+		t.Fatalf("list join requests: %v", err)
+	}
+	if len(requests) != 1 || requests[0].ID != request.ID {
+		t.Fatalf("expected one join request for owner")
+	}
+
+	approved, err := svc.ReviewJoinRequest(owner, request.ID, true, "")
+	if err != nil {
+		t.Fatalf("approve join request: %v", err)
+	}
+	if approved.Status != "approved" || approved.AccessCode == "" {
+		t.Fatalf("expected approved request with access code, got %+v", approved)
+	}
+
+	member, err := svc.CompleteJoinAccess("neo@paineldief.local", approved.AccessCode, "neo", "Neo", "Neo#2026")
+	if err != nil {
+		t.Fatalf("complete join access: %v", err)
+	}
+	if member.Role != "member" {
+		t.Fatalf("expected new member role, got %q", member.Role)
+	}
+
+	memberLogin, _, err := svc.Login("neo", "Neo#2026")
+	if err != nil {
+		t.Fatalf("login approved member: %v", err)
+	}
+
+	updated, err := svc.UpdateUserRole(owner, memberLogin.ID, "vip")
+	if err != nil {
+		t.Fatalf("update user role: %v", err)
+	}
+	if updated.Role != "vip" {
+		t.Fatalf("expected vip role after update, got %q", updated.Role)
+	}
+
+	if err := svc.ExpelUser(owner, memberLogin.ID); err != nil {
+		t.Fatalf("expel user: %v", err)
+	}
+	if _, err := store.GetPanelUserByID(memberLogin.ID); err == nil {
+		t.Fatalf("expected expelled user to be removed from store")
+	}
+}
+
 func TestUpdateProfileSanitizesAvatarAndDisplayName(t *testing.T) {
 	store, err := db.Open(filepath.Join(t.TempDir(), "panel-profile.db"))
 	if err != nil {

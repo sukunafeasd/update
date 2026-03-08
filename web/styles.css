@@ -564,6 +564,10 @@ pre,
   align-items: center;
 }
 
+.login-download-actions .btn {
+  flex: 0 1 auto;
+}
+
 .btn-download {
   text-decoration: none;
   border-color: color-mix(in srgb, var(--accent) 34%, transparent);
@@ -1168,6 +1172,55 @@ body.sidebar-collapsed #channel-panel {
   gap: 0.45rem;
 }
 
+.owner-admin-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.owner-admin-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.roster-item {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.roster-copy {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.roster-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.roster-actions select {
+  min-width: 120px;
+}
+
+.roster-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.join-request-item.status-pending {
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+}
+
+.join-request-item.status-approved {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.join-request-item.status-rejected {
+  border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+}
+
 .presence-text {
   display: grid;
   gap: 0.22rem;
@@ -1296,6 +1349,14 @@ body.sidebar-collapsed #channel-panel {
 #conversation-panel.apps-lab-mode {
   grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto;
   align-content: stretch;
+}
+
+#conversation-panel.apps-lab-mode #pins-strip,
+#conversation-panel.apps-lab-mode #unread-banner,
+#conversation-panel.apps-lab-mode #typing-indicator,
+#conversation-panel.apps-lab-mode #composer-form,
+#conversation-panel.apps-lab-mode #message-stream {
+  display: none !important;
 }
 
 #conversation-panel.sus-mode {
@@ -2309,6 +2370,18 @@ body.inspector-collapsed #inspector-panel {
   flex: 1 1 140px;
 }
 
+.member-moderation {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--line);
+}
+
+.member-moderation select {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
 #conversation-panel.panel-shift #room-dashboard,
 #conversation-panel.panel-shift #apps-lab-deck,
 #conversation-panel.panel-shift #room-state,
@@ -2783,6 +2856,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     align-items: stretch;
   }
 
+  .login-download-actions .btn {
+    width: 100%;
+  }
+
   #conversation-panel {
     padding: 0.85rem;
   }
@@ -2836,5 +2913,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .presence-actions .btn {
     flex: 1 1 120px;
+  }
+
+  .roster-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .roster-actions .btn,
+  .roster-actions select {
+    width: 100%;
   }
 }

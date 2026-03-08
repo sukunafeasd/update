@@ -93,6 +93,9 @@
     blockedUserIds: [],
     mutedUserIds: [],
     users: [],
+    joinRequests: [],
+    joinRequestsLoaded: false,
+    pendingJoinCount: 0,
     activeRoomId: 0,
     messagesByRoom: {},
     pinnedByRoom: {},
@@ -1906,6 +1909,9 @@
     state.blockedUserIds = [];
     state.mutedUserIds = [];
     state.users = [];
+    state.joinRequests = [];
+    state.joinRequestsLoaded = false;
+    state.pendingJoinCount = 0;
     state.activeRoomId = 0;
     state.activeNavId = "chat-geral";
     state.messagesByRoom = {};
@@ -2013,6 +2019,12 @@
     state.appsNotesDraft = loadAppsNotes();
     state.favoriteNavIds = loadFavoriteNavIds();
     state.focusMode = loadFocusMode();
+    if (!state.viewer || state.viewer.role !== "owner") {
+      state.users = [];
+      state.joinRequests = [];
+      state.joinRequestsLoaded = false;
+      state.pendingJoinCount = 0;
+    }
     preferredRoomId = loadStoredActiveRoomId();
     preferredNavId = loadStoredActiveNavId();
     syncPendingAttachmentAlias();
@@ -2054,6 +2066,7 @@
     }
     if (state.viewer && state.viewer.role === "owner") {
       loadUsers();
+      loadJoinRequests();
     }
     setupStream();
     setupHeartbeat();
@@ -2082,6 +2095,7 @@
     renderFavorites();
     renderPolls();
     renderLogs();
+    renderJoinRequests();
     renderAdminPanels();
     renderInspectorTabs();
     renderTypingIndicator();
@@ -2318,6 +2332,8 @@
     q("message-stream").classList.remove("hidden");
     q("typing-indicator").classList.remove("hidden");
     q("sus-panel").classList.add("hidden");
+    q("pins-strip").classList.remove("hidden");
+    q("unread-banner").classList.remove("hidden");
 
     if (isSusView()) {
       q("room-icon").textContent = "??";
@@ -2408,9 +2424,14 @@
 
     if (isAppsLabRoom(room)) {
       q("room-description").textContent = "Sala tecnica privada do admin para build, terminal, codigo e atualizacao do UniversalD.";
-      q("overview-room-copy").textContent = "Canal restrito do admin com chat, fluxo do app e painel tecnico.";
+      q("overview-room-copy").textContent = "Central privada do UniversalD com abertura, download, hash, build e painel tecnico sem conversa no meio.";
       q("room-type-badge").className = "badge kind-dev";
       q("room-type-badge").textContent = "lab";
+      q("composer-form").classList.add("hidden");
+      q("message-stream").classList.add("hidden");
+      q("typing-indicator").classList.add("hidden");
+      q("pins-strip").classList.add("hidden");
+      q("unread-banner").classList.add("hidden");
     }
 
     if (access === "dm") {
@@ -2889,7 +2910,7 @@
   function renderPinnedStrip() {
     var wrap = q("pins-strip");
     var items = currentRoomPins();
-    if (isHubView() || !items.length) {
+    if (isHubView() || isAppsLabRoom(activeRoom()) || !items.length) {
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
       return;
@@ -3119,6 +3140,11 @@
       stream.innerHTML = "<div class='empty-state'>Escolhe uma area na esquerda pra abrir o chat certo.</div>";
       return;
     }
+    if (isAppsLabRoom(room)) {
+      stream.classList.add("hidden");
+      renderTypingIndicator();
+      return;
+    }
     if (accessForRoom(room) === "locked" || accessForRoom(room) === "vip") {
       stream.innerHTML = "<div class='empty-state'>Essa aba ainda nao abriu de verdade.</div>";
       renderTypingIndicator();
@@ -3173,7 +3199,7 @@
 
   function renderTypingIndicator() {
     var wrap = q("typing-indicator");
-    if (isSusView()) {
+    if (isSusView() || isAppsLabRoom(activeRoom())) {
       wrap.classList.add("hidden");
       wrap.textContent = "";
       return;
@@ -3256,12 +3282,18 @@
   function renderEvents() {
     var list = q("event-list");
     var form = q("event-form");
+    var room = activeRoom();
     var items = (state.events || []).slice(0).sort(function(a, b) {
       return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
     });
     q("events-status-pill").textContent = items.length + " eventos";
     renderEventRoomOptions();
     form.classList.toggle("hidden", !state.viewer || state.viewer.role === "ai");
+    if (isAppsLabRoom(room)) {
+      form.classList.add("hidden");
+      list.innerHTML = "<div class='empty-state'>Apps Lab agora e central do app. Agenda ficou fora dessa area.</div>";
+      return;
+    }
     if (!items.length) {
       list.innerHTML = "<div class='empty-state'>Ainda nao tem evento marcado. Cria um rolê e movimenta a base.</div>";
       return;
@@ -3297,6 +3329,11 @@
     form.classList.toggle("hidden", !room || isHubView() || accessForRoom(room) === "locked" || accessForRoom(room) === "vip" || (state.viewer && state.viewer.role === "ai"));
     if (!room || isHubView()) {
       list.innerHTML = "<div class='empty-state'>Escolhe uma sala de conversa para abrir ou votar em enquetes.</div>";
+      return;
+    }
+    if (isAppsLabRoom(room)) {
+      form.classList.add("hidden");
+      list.innerHTML = "<div class='empty-state'>Apps Lab agora e central do app. Enquete ficou fora dessa area.</div>";
       return;
     }
     if (accessForRoom(room) === "locked" || accessForRoom(room) === "vip") {
@@ -3379,7 +3416,7 @@
   function renderUnreadBanner() {
     var wrap = q("unread-banner");
     var marker = state.latestUnreadByRoom[String(state.activeRoomId)];
-    if (isHubView() || !marker) {
+    if (isHubView() || isAppsLabRoom(activeRoom()) || !marker) {
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
       return;
@@ -3406,6 +3443,14 @@
         summary.textContent = "Seleciona uma sala real para abrir a biblioteca de midia.";
       }
       list.innerHTML = "<div class='empty-state'>Seleciona uma sala de chat para ver a midia dela.</div>";
+      return;
+    }
+    if (isAppsLabRoom(activeRoom())) {
+      q("files-status-pill").textContent = "app only";
+      if (summary) {
+        summary.textContent = "Apps Lab agora virou central do UniversalD. Sem biblioteca de midia misturada aqui.";
+      }
+      list.innerHTML = "<div class='empty-state'>Usa essa area para abrir, baixar e atualizar o app oficial.</div>";
       return;
     }
     q("files-status-pill").textContent = attachments.length + " / " + total + " itens";
@@ -3471,18 +3516,67 @@
 
   function renderUserRoster() {
     var list = q("user-roster");
+    q("user-roster-status-pill").textContent = state.users.length + " usuarios";
     list.innerHTML = "";
     if (!state.users.length) {
       list.innerHTML = "<div class='empty-state'>Sem usuarios extras cadastrados ainda.</div>";
       return;
     }
     state.users.forEach(function(user) {
+      var manageable = state.viewer && state.viewer.role === "owner" && Number(user.id) !== Number(state.viewer.id) && user.role !== "owner" && user.role !== "ai";
       var card = document.createElement("article");
       card.className = "roster-item";
       card.innerHTML =
-        "<strong>" + esc(user.displayName || user.username) + "</strong>" +
-        "<span>" + esc((user.role || "member") + " // " + (user.email || "sem email")) + "</span>" +
-        "<span>Ultimo login: " + esc(user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "nunca") + "</span>";
+        "<div class='roster-copy'>" +
+          "<strong>" + esc(user.displayName || user.username) + "</strong>" +
+          "<span>" + esc((user.role || "member") + " // " + (user.email || "sem email")) + "</span>" +
+          "<span>Ultimo login: " + esc(user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "nunca") + "</span>" +
+        "</div>" +
+        (manageable
+          ? "<div class='roster-actions'>" +
+              "<select data-role-select='" + Number(user.id) + "'>" +
+                "<option value='member'" + (user.role === "member" ? " selected" : "") + ">membro</option>" +
+                "<option value='vip'" + (user.role === "vip" ? " selected" : "") + ">vip</option>" +
+                "<option value='admin'" + (user.role === "admin" ? " selected" : "") + ">admin</option>" +
+              "</select>" +
+              "<button class='btn btn-ghost' type='button' data-action='apply-user-role' data-user-id='" + Number(user.id) + "'>Salvar cargo</button>" +
+              "<button class='btn btn-danger' type='button' data-action='expel-user' data-user-id='" + Number(user.id) + "'>Expulsar</button>" +
+            "</div>"
+          : "<div class='roster-actions'><span class='ghost-pill'>" + esc(user.role || "member") + "</span></div>");
+      list.appendChild(card);
+    });
+  }
+
+  function renderJoinRequests() {
+    var list = q("join-request-list");
+    var pending = state.joinRequests.filter(function(item) {
+      return String(item.status || "") === "pending";
+    }).length;
+    q("join-request-status-pill").textContent = pending + " pendentes";
+    list.innerHTML = "";
+    if (!state.joinRequests.length) {
+      list.innerHTML = "<div class='empty-state'>Nenhum pedido de entrada apareceu ainda.</div>";
+      return;
+    }
+    state.joinRequests.forEach(function(item) {
+      var status = String(item.status || "pending");
+      var card = document.createElement("article");
+      card.className = "roster-item join-request-item status-" + status;
+      card.innerHTML =
+        "<div class='roster-copy'>" +
+          "<strong>" + esc(item.displayName || item.email || "Pedido novo") + "</strong>" +
+          "<span>" + esc(item.email || "sem email") + " // " + esc(status) + "</span>" +
+          "<span>Pedido: " + esc(formatDateTime(item.requestedAt)) + "</span>" +
+          (item.note ? "<p class='roster-note'>" + esc(item.note) + "</p>" : "") +
+          (item.reviewNote ? "<p class='roster-note'><strong>Retorno:</strong> " + esc(item.reviewNote) + "</p>" : "") +
+          (item.accessCode ? "<p class='roster-note'><strong>Codigo:</strong> <code>" + esc(item.accessCode) + "</code>" + (item.emailSent ? " // enviado por email" : " // enviar manualmente") + "</p>" : "") +
+        "</div>" +
+        "<div class='roster-actions'>" +
+          (status === "pending"
+            ? "<button class='btn btn-primary' type='button' data-action='review-join-request' data-request-id='" + Number(item.id) + "' data-approve='true'>Aprovar</button>" +
+              "<button class='btn btn-danger' type='button' data-action='review-join-request' data-request-id='" + Number(item.id) + "' data-approve='false'>Recusar</button>"
+            : "<span class='ghost-pill'>" + esc(status) + "</span>") +
+        "</div>";
       list.appendChild(card);
     });
   }
@@ -3830,6 +3924,10 @@
       toast("Nessa aba tu nao conversa. Tu so provoca o destino.", "warn");
       return;
     }
+    if (isAppsLabRoom(room)) {
+      toast("Apps Lab virou central do app. Aqui tu abre, baixa e atualiza sem chat no meio.", "warn");
+      return;
+    }
     if (!room) {
       return;
     }
@@ -4055,6 +4153,10 @@
     state.previousOnlineMap = onlineMap(state.online);
     applyTheme();
     renderShell();
+    if (state.viewer && state.viewer.role === "owner") {
+      loadUsers();
+      loadJoinRequests();
+    }
   }
 
   async function uploadSelectedFile(input, onDone) {
@@ -4174,6 +4276,8 @@
     var actionDM = q("member-action-dm");
     var actionBlock = q("member-action-block");
     var actionMute = q("member-action-mute");
+    var moderationWrap = q("member-moderation");
+    var roleSelect = q("member-role-select");
     var stats;
     var liveRoom;
     var statusCopy = "";
@@ -4215,6 +4319,11 @@
     actionMute.textContent = profile.user.mutedByViewer ? "Tirar silencio" : "Silenciar";
     actionBlock.disabled = profile.canManage;
     actionMute.disabled = profile.canManage;
+    moderationWrap.classList.toggle("hidden", !profile.canModerate);
+    if (profile.canModerate) {
+      roleSelect.value = String(profile.user.role || "member");
+      q("member-moderation-copy").textContent = "Dono online: mexe no cargo ou expulsa sem sair do perfil.";
+    }
   }
 
   function fallbackSocialProfile(userId) {
@@ -4242,7 +4351,8 @@
     return {
       user: presence,
       canDm: Number(userId) !== Number(state.viewer && state.viewer.id) && !presence.blockedByViewer && !presence.hasBlockedViewer && presence.role !== "ai",
-      canManage: Number(userId) === Number(state.viewer && state.viewer.id)
+      canManage: Number(userId) === Number(state.viewer && state.viewer.id),
+      canModerate: state.viewer && state.viewer.role === "owner" && Number(userId) !== Number(state.viewer.id) && presence.role !== "owner" && presence.role !== "ai"
     };
   }
 
@@ -4262,6 +4372,30 @@
     q("download-access-password").value = "";
     q("download-access-error").classList.add("hidden");
     q("download-access-error").textContent = "";
+  }
+
+  function resetJoinRequestState() {
+    q("join-request-form").reset();
+    q("join-request-error").classList.add("hidden");
+    q("join-request-error").textContent = "";
+  }
+
+  function openJoinRequestModal() {
+    resetJoinRequestState();
+    q("join-request-modal").classList.remove("hidden");
+    q("join-request-email").focus();
+  }
+
+  function resetJoinCompleteState() {
+    q("join-complete-form").reset();
+    q("join-complete-error").classList.add("hidden");
+    q("join-complete-error").textContent = "";
+  }
+
+  function openJoinCompleteModal() {
+    resetJoinCompleteState();
+    q("join-complete-modal").classList.remove("hidden");
+    q("join-complete-email").focus();
   }
 
   function openDownloadAccessModal() {
@@ -4296,6 +4430,84 @@
       playTone("err");
     } finally {
       setButtonBusy(submit, false, "Liberando...", "Liberar e baixar");
+    }
+  }
+
+  async function handleJoinRequestSubmit(event) {
+    event.preventDefault();
+    var submit = q("btn-join-request-submit");
+    var card = q("join-request-modal").querySelector(".modal-card");
+    var email = q("join-request-email").value.trim();
+    var displayName = q("join-request-display").value.trim();
+    var note = q("join-request-note").value.trim();
+    if (!email || !displayName) {
+      q("join-request-error").classList.remove("hidden");
+      q("join-request-error").textContent = "Bah, manda email e nome antes de pedir guarida.";
+      pulseClass(card, "login-error-pulse");
+      return;
+    }
+    try {
+      setButtonBusy(submit, true, "Enviando...", "Enviar pedido");
+      var data = await apiFetch("/api/panel/join-request", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email,
+          displayName: displayName,
+          note: note
+        })
+      });
+      closeModal("join-request-modal");
+      q("login-error").classList.remove("hidden");
+      q("login-error").textContent = data.message || "Pedido enviado pro dono revisar.";
+      pulseClass(q("login-view").querySelector(".login-stage"), "login-success-pulse");
+      playTone("ok");
+    } catch (err) {
+      q("join-request-error").classList.remove("hidden");
+      q("join-request-error").textContent = err.message || "Nao consegui mandar teu pedido agora.";
+      pulseClass(card, "login-error-pulse");
+      playTone("err");
+    } finally {
+      setButtonBusy(submit, false, "Enviando...", "Enviar pedido");
+    }
+  }
+
+  async function handleJoinCompleteSubmit(event) {
+    event.preventDefault();
+    var submit = q("btn-join-complete-submit");
+    var card = q("join-complete-modal").querySelector(".modal-card");
+    var payload = {
+      email: q("join-complete-email").value.trim(),
+      accessCode: q("join-complete-code").value.trim(),
+      username: q("join-complete-username").value.trim(),
+      displayName: q("join-complete-display").value.trim(),
+      password: q("join-complete-password").value.trim()
+    };
+    if (!payload.email || !payload.accessCode || !payload.username || !payload.password) {
+      q("join-complete-error").classList.remove("hidden");
+      q("join-complete-error").textContent = "Sem email, codigo, usuario e senha essa conta nao nasce.";
+      pulseClass(card, "login-error-pulse");
+      return;
+    }
+    try {
+      setButtonBusy(submit, true, "Criando...", "Criar acesso");
+      var data = await apiFetch("/api/panel/join-request/complete", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      closeModal("join-complete-modal");
+      q("login-input").value = payload.username;
+      q("password-input").value = payload.password;
+      q("login-error").classList.remove("hidden");
+      q("login-error").textContent = data.message || "Acesso criado. Agora entra no painel.";
+      pulseClass(q("login-view").querySelector(".login-stage"), "login-success-pulse");
+      playTone("ok");
+    } catch (err) {
+      q("join-complete-error").classList.remove("hidden");
+      q("join-complete-error").textContent = err.message || "Nao consegui concluir teu acesso.";
+      pulseClass(card, "login-error-pulse");
+      playTone("err");
+    } finally {
+      setButtonBusy(submit, false, "Criando...", "Criar acesso");
     }
   }
 
@@ -4462,6 +4674,33 @@
     }
   }
 
+  async function handleMemberRoleSave() {
+    if (!state.selectedMember || !state.selectedMember.canModerate) {
+      return;
+    }
+    try {
+      await updateUserRole(Number(state.selectedMember.user.userId), q("member-role-select").value);
+      closeModal("member-modal");
+    } catch (err) {
+      toast(err.message, "err");
+    }
+  }
+
+  async function handleMemberExpelAction() {
+    if (!state.selectedMember || !state.selectedMember.canModerate) {
+      return;
+    }
+    if (!window.confirm("Quer mesmo expulsar esse usuario da base?")) {
+      return;
+    }
+    try {
+      await expelUser(Number(state.selectedMember.user.userId));
+      closeModal("member-modal");
+    } catch (err) {
+      toast(err.message, "err");
+    }
+  }
+
   function closeModal(id) {
     q(id).classList.add("hidden");
     if (id === "member-modal") {
@@ -4472,6 +4711,12 @@
     }
     if (id === "download-access-modal") {
       resetDownloadAccessState();
+    }
+    if (id === "join-request-modal") {
+      resetJoinRequestState();
+    }
+    if (id === "join-complete-modal") {
+      resetJoinCompleteState();
     }
   }
 
@@ -4539,6 +4784,7 @@
   async function loadUsers() {
     if (!state.viewer || state.viewer.role !== "owner") {
       q("owner-card").classList.add("hidden");
+      state.users = [];
       return;
     }
     try {
@@ -4547,8 +4793,81 @@
       renderUserRoster();
       q("owner-card").classList.remove("hidden");
     } catch (err) {
+      state.users = [];
+      renderUserRoster();
       q("owner-card").classList.add("hidden");
     }
+  }
+
+  async function loadJoinRequests(silent) {
+    var previousPending = Number(state.pendingJoinCount || 0);
+    if (!state.viewer || state.viewer.role !== "owner") {
+      state.joinRequests = [];
+      state.joinRequestsLoaded = false;
+      state.pendingJoinCount = 0;
+      renderJoinRequests();
+      return;
+    }
+    try {
+      var data = await apiFetch("/api/panel/join-requests");
+      state.joinRequests = data.requests || [];
+      state.joinRequestsLoaded = true;
+      state.pendingJoinCount = state.joinRequests.filter(function(item) {
+        return String(item.status || "") === "pending";
+      }).length;
+      renderJoinRequests();
+      if (silent !== true && previousPending && state.pendingJoinCount > previousPending) {
+        toast("Chegou pedido novo pra entrar na base.", "ok");
+      }
+    } catch (err) {
+      state.joinRequests = [];
+      renderJoinRequests();
+      if (silent !== true) {
+        toast(err.message, "err");
+      }
+    }
+  }
+
+  async function reviewJoinRequest(requestId, approve) {
+    try {
+      var data = await apiFetch("/api/panel/join-requests/review", {
+        method: "POST",
+        body: JSON.stringify({
+          requestId: Number(requestId),
+          approve: !!approve,
+          reviewNote: ""
+        })
+      });
+      syncBootstrapSnapshot(await apiFetch("/api/panel/bootstrap"));
+      await loadJoinRequests(true);
+      toast(data.message || "Pedido revisado.", approve ? "ok" : "warn");
+    } catch (err) {
+      toast(err.message, "err");
+    }
+  }
+
+  async function updateUserRole(userId, role) {
+    var data = await apiFetch("/api/panel/users/role", {
+      method: "POST",
+      body: JSON.stringify({
+        targetUserId: Number(userId),
+        role: String(role || "member")
+      })
+    });
+    await loadUsers();
+    syncBootstrapSnapshot(await apiFetch("/api/panel/bootstrap"));
+    toast((data.user && data.user.displayName ? data.user.displayName : "Usuario") + " agora ta como " + (data.user && data.user.role ? data.user.role : role) + ".", "ok");
+    return data;
+  }
+
+  async function expelUser(userId) {
+    await apiFetch("/api/panel/users/expel", {
+      method: "POST",
+      body: JSON.stringify({ targetUserId: Number(userId) })
+    });
+    await loadUsers();
+    syncBootstrapSnapshot(await apiFetch("/api/panel/bootstrap"));
+    toast("Usuario expulso da base.", "warn");
   }
 
   async function loadLogs() {
@@ -4932,6 +5251,7 @@
     var previousRoomVersion = Number(state.roomVersions[activeRoomId] || 0);
     var nextRoomVersions = payload.roomVersions || {};
     var nextActiveRoomVersion = Number(nextRoomVersions[activeRoomId] || previousRoomVersion || 0);
+    var previousVersion = Number(state.version || 0);
     var nextVersion = Number(payload.version || state.version || 0);
     state.lastStreamAt = Date.now();
     setConnectionStatus("live");
@@ -4950,6 +5270,10 @@
     state.version = nextVersion;
 
     renderShell();
+    if (state.viewer && state.viewer.role === "owner" && nextVersion !== previousVersion) {
+      loadUsers();
+      loadJoinRequests(false);
+    }
 
     var nextCurrentRoom = activeRoom();
     if (nextCurrentRoom && nextActiveRoomVersion !== previousRoomVersion && accessForRoom(nextCurrentRoom) !== "locked" && accessForRoom(nextCurrentRoom) !== "vip") {
@@ -5258,6 +5582,8 @@
     });
     q("btn-login-download").addEventListener("click", openDownloadAccessModal);
     q("btn-login-guide").addEventListener("click", openAppCenterModal);
+    q("btn-login-request-access").addEventListener("click", openJoinRequestModal);
+    q("btn-login-complete-access").addEventListener("click", openJoinCompleteModal);
     q("btn-logout").addEventListener("click", handleLogout);
     q("btn-profile").addEventListener("click", openProfileModal);
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
@@ -5286,10 +5612,14 @@
       openGuideModal(true);
     });
     q("download-access-form").addEventListener("submit", handleDownloadAccessSubmit);
+    q("join-request-form").addEventListener("submit", handleJoinRequestSubmit);
+    q("join-complete-form").addEventListener("submit", handleJoinCompleteSubmit);
     q("btn-room-favorite").addEventListener("click", toggleActiveNavFavorite);
     q("member-action-dm").addEventListener("click", handleMemberDMAction);
     q("member-action-block").addEventListener("click", handleMemberBlockAction);
     q("member-action-mute").addEventListener("click", handleMemberMuteAction);
+    q("member-action-role-save").addEventListener("click", handleMemberRoleSave);
+    q("member-action-expel").addEventListener("click", handleMemberExpelAction);
     q("btn-audio-toggle").addEventListener("click", toggleAudio);
     q("btn-sidebar-open").addEventListener("click", openSidebar);
     q("composer-form").addEventListener("submit", handleComposerSubmit);
@@ -5466,6 +5796,8 @@
         closeModal("guide-modal");
         closeModal("app-center-modal");
         closeModal("download-access-modal");
+        closeModal("join-request-modal");
+        closeModal("join-complete-modal");
         closeSidebar();
         closeInspector();
       }
@@ -5500,6 +5832,12 @@
       }
       if (target === q("download-access-modal")) {
         closeModal("download-access-modal");
+      }
+      if (target === q("join-request-modal")) {
+        closeModal("join-request-modal");
+      }
+      if (target === q("join-complete-modal")) {
+        closeModal("join-complete-modal");
       }
     });
 
@@ -5574,6 +5912,19 @@
         deletePoll(Number(target.getAttribute("data-poll-id")));
       } else if (action === "sus-trigger") {
         handleSusTrigger();
+      } else if (action === "review-join-request") {
+        reviewJoinRequest(Number(target.getAttribute("data-request-id")), target.getAttribute("data-approve") === "true");
+      } else if (action === "apply-user-role") {
+        var roleInput = document.querySelector("[data-role-select='" + Number(target.getAttribute("data-user-id")) + "']");
+        updateUserRole(Number(target.getAttribute("data-user-id")), roleInput ? roleInput.value : "member").catch(function(err) {
+          toast(err.message, "err");
+        });
+      } else if (action === "expel-user") {
+        if (window.confirm("Quer expulsar esse usuario da base?")) {
+          expelUser(Number(target.getAttribute("data-user-id"))).catch(function(err) {
+            toast(err.message, "err");
+          });
+        }
       }
     });
   }

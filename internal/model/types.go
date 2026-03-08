@@ -187,9 +187,27 @@ type PanelSearchResult struct {
 }
 
 type PanelSocialProfile struct {
-	User      PanelPresence `json:"user"`
-	CanDM     bool          `json:"canDm"`
-	CanManage bool          `json:"canManage"`
+	User        PanelPresence `json:"user"`
+	CanDM       bool          `json:"canDm"`
+	CanManage   bool          `json:"canManage"`
+	CanModerate bool          `json:"canModerate"`
+}
+
+type PanelJoinRequest struct {
+	ID                int64      `json:"id"`
+	Email             string     `json:"email"`
+	DisplayName       string     `json:"displayName"`
+	Note              string     `json:"note"`
+	Status            string     `json:"status"`
+	ReviewNote        string     `json:"reviewNote,omitempty"`
+	RequestedAt       time.Time  `json:"requestedAt"`
+	ReviewedAt        *time.Time `json:"reviewedAt,omitempty"`
+	ReviewedBy        int64      `json:"reviewedBy,omitempty"`
+	ReviewerName      string     `json:"reviewerName,omitempty"`
+	AccessCodeExpires *time.Time `json:"accessCodeExpires,omitempty"`
+	ApprovedUserID    int64      `json:"approvedUserId,omitempty"`
+	EmailSent         bool       `json:"emailSent,omitempty"`
+	AccessCode        string     `json:"accessCode,omitempty"`
 }
 
 type PanelOpsSummary struct {

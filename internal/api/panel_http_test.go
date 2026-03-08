@@ -288,6 +288,130 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 	}
 }
 
+func TestPanelHTTPJoinRequestAndOwnerModerationFlow(t *testing.T) {
+	root := t.TempDir()
+
+	store, err := db.Open(filepath.Join(root, "panel-http-membership.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	staticDir := filepath.Join(root, "web")
+	if err := os.MkdirAll(staticDir, 0o755); err != nil {
+		t.Fatalf("mkdir web: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<!doctype html><html><body>Painel Dief</body></html>"), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	ts := httptest.NewServer(NewPanelServer(staticDir, "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:       "staging",
+		PublicOrigin: "https://staging.paineldief.example",
+		DBPath:       filepath.Join(root, "panel-http-membership.db"),
+		OpsToken:     "ops-secret",
+	}).Handler())
+	defer ts.Close()
+
+	guestClient := ts.Client()
+	join := mustRequestJSON(t, guestClient, http.MethodPost, ts.URL+"/api/panel/join-request", map[string]any{
+		"email":       "pedido@paineldief.local",
+		"displayName": "Pedido HTTP",
+		"note":        "quero entrar",
+	}, nil, http.StatusOK)
+	requestMap := asMap(t, join["request"])
+	requestID := asInt64(t, requestMap["id"])
+
+	ownerJar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookie jar: %v", err)
+	}
+	ownerClient := ts.Client()
+	ownerClient.Jar = ownerJar
+
+	mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
+		"login":    "dief",
+		"password": "valorant",
+	}, nil, http.StatusOK)
+
+	requests := mustRequestJSON(t, ownerClient, http.MethodGet, ts.URL+"/api/panel/join-requests", nil, nil, http.StatusOK)
+	if !containsEntityID(t, requests["requests"], requestID) {
+		t.Fatalf("owner did not receive join request in queue")
+	}
+
+	review := mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/join-requests/review", map[string]any{
+		"requestId":  requestID,
+		"approve":    true,
+		"reviewNote": "",
+	}, nil, http.StatusOK)
+	reviewedRequest := asMap(t, review["request"])
+	accessCode := asString(t, reviewedRequest["accessCode"])
+	if strings.TrimSpace(accessCode) == "" {
+		t.Fatalf("expected access code after approval")
+	}
+
+	complete := mustRequestJSON(t, guestClient, http.MethodPost, ts.URL+"/api/panel/join-request/complete", map[string]any{
+		"email":       "pedido@paineldief.local",
+		"accessCode":  accessCode,
+		"username":    "pedido-http",
+		"displayName": "Pedido HTTP",
+		"password":    "Pedido#2026",
+	}, nil, http.StatusOK)
+	createdUser := asMap(t, complete["user"])
+	targetUserID := asInt64(t, createdUser["id"])
+
+	memberJar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("member cookie jar: %v", err)
+	}
+	memberClient := ts.Client()
+	memberClient.Jar = memberJar
+
+	mustRequestJSON(t, memberClient, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
+		"login":    "pedido-http",
+		"password": "Pedido#2026",
+	}, nil, http.StatusOK)
+
+	roleDenied := mustRequestJSON(t, memberClient, http.MethodPost, ts.URL+"/api/panel/users/role", map[string]any{
+		"targetUserId": targetUserID,
+		"role":         "vip",
+	}, nil, http.StatusForbidden)
+	if !strings.Contains(strings.ToLower(asString(t, roleDenied["error"])), "dono") {
+		t.Fatalf("expected owner-only role error, got %#v", roleDenied["error"])
+	}
+
+	mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
+		"login":    "dief",
+		"password": "valorant",
+	}, nil, http.StatusOK)
+
+	roleUpdated := mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/users/role", map[string]any{
+		"targetUserId": targetUserID,
+		"role":         "vip",
+	}, nil, http.StatusOK)
+	if asMap(t, roleUpdated["user"])["role"] != "vip" {
+		t.Fatalf("expected vip role after owner update")
+	}
+
+	mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/users/expel", map[string]any{
+		"targetUserId": targetUserID,
+	}, nil, http.StatusOK)
+
+	postExpelLogin := mustRequestJSON(t, guestClient, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
+		"login":    "pedido-http",
+		"password": "Pedido#2026",
+	}, nil, http.StatusUnauthorized)
+	errorText := strings.ToLower(asString(t, postExpelLogin["error"]))
+	if !strings.Contains(errorText, "credenciais") && !strings.Contains(errorText, "login") && !strings.Contains(errorText, "nao encontrado") {
+		t.Fatalf("expected expelled account login failure, got %#v", postExpelLogin["error"])
+	}
+}
+
 func mustUploadFile(t *testing.T, client *http.Client, url string, fieldName string, fileName string, contentType string, payload []byte, wantStatus int) map[string]any {
 	t.Helper()
 

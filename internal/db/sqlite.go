@@ -270,6 +270,29 @@ CREATE TABLE IF NOT EXISTS panel_poll_votes (
 
 CREATE INDEX IF NOT EXISTS idx_panel_poll_votes_poll
 ON panel_poll_votes (poll_id, option_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS panel_join_requests (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	email TEXT NOT NULL,
+	display_name TEXT NOT NULL DEFAULT '',
+	note TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL DEFAULT 'pending',
+	review_note TEXT NOT NULL DEFAULT '',
+	requested_at TEXT NOT NULL,
+	reviewed_at TEXT NOT NULL DEFAULT '',
+	reviewed_by INTEGER NOT NULL DEFAULT 0,
+	reviewer_name TEXT NOT NULL DEFAULT '',
+	access_code TEXT NOT NULL DEFAULT '',
+	access_code_expires TEXT NOT NULL DEFAULT '',
+	approved_user_id INTEGER NOT NULL DEFAULT 0,
+	email_sent INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_panel_join_requests_email
+ON panel_join_requests (email, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_panel_join_requests_status
+ON panel_join_requests (status, id DESC);
 `
 	_, err := s.db.Exec(schema)
 	if err != nil {
