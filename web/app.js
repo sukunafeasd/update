@@ -1355,6 +1355,42 @@
       "</div>";
   }
 
+  function renderMediaInsights(room, attachments, total) {
+    var wrap = q("media-insights");
+    var totals;
+    var totalBytes = 0;
+    if (!wrap) {
+      return;
+    }
+    if (!room || isHubView() || isAppsLabRoom(room)) {
+      wrap.innerHTML = "";
+      wrap.classList.add("hidden");
+      return;
+    }
+    totals = {
+      image: 0,
+      video: 0,
+      audio: 0,
+      file: 0
+    };
+    currentRoomAttachments().forEach(function(message) {
+      var kind = String(message.attachment && message.attachment.kind || "file");
+      if (!totals[kind] && totals[kind] !== 0) {
+        totals[kind] = 0;
+      }
+      totals[kind] += 1;
+      totalBytes += Number(message.attachment && message.attachment.sizeBytes || 0);
+    });
+    wrap.classList.remove("hidden");
+    wrap.innerHTML =
+      "<article class='insight-card'><span>visiveis</span><strong>" + attachments.length + "</strong><p>itens batendo no filtro atual</p></article>" +
+      "<article class='insight-card'><span>biblioteca</span><strong>" + total + "</strong><p>midias salvas nessa area</p></article>" +
+      "<article class='insight-card'><span>fotos</span><strong>" + totals.image + "</strong><p>prints e imagens da sala</p></article>" +
+      "<article class='insight-card'><span>videos</span><strong>" + totals.video + "</strong><p>clips e videozinhos enviados</p></article>" +
+      "<article class='insight-card'><span>arquivos</span><strong>" + (totals.file + totals.audio) + "</strong><p>docs, audios e pacotes</p></article>" +
+      "<article class='insight-card'><span>peso</span><strong>" + esc(bytesLabel(totalBytes)) + "</strong><p>biblioteca total carregada</p></article>";
+  }
+
   function renderMembersInsights() {
     var wrap = q("members-insights");
     var items = filteredPresenceItems();
@@ -3637,6 +3673,7 @@
     var attachments = filteredRoomAttachments();
     var total = currentRoomAttachments().length;
     var summary = q("media-summary");
+    var room = activeRoom();
     renderRoomSpotlight();
     q("media-search-input").value = state.mediaSearch;
     q("media-sort-select").value = state.mediaSort;
@@ -3645,6 +3682,7 @@
     });
     if (isHubView()) {
       q("files-status-pill").textContent = "0 itens";
+      renderMediaInsights(null, [], 0);
       if (summary) {
         summary.textContent = "Seleciona uma sala real para abrir a biblioteca de midia.";
       }
@@ -3653,6 +3691,7 @@
     }
     if (isAppsLabRoom(activeRoom())) {
       q("files-status-pill").textContent = "app only";
+      renderMediaInsights(null, [], 0);
       if (summary) {
         summary.textContent = "Apps Lab agora virou central do UniversalD. Sem biblioteca de midia misturada aqui.";
       }
@@ -3660,9 +3699,16 @@
       return;
     }
     q("files-status-pill").textContent = attachments.length + " / " + total + " itens";
+    renderMediaInsights(room, attachments, total);
     list.innerHTML = "";
+    list.className = "media-list";
+    if (room && room.slug === "fotos") {
+      list.classList.add("gallery-mode");
+    } else {
+      list.classList.add("file-mode");
+    }
     if (summary) {
-      summary.textContent = "Filtro " + (state.mediaFilter === "all" ? "geral" : state.mediaFilter) + " // ordem " + mediaSortLabel(state.mediaSort) + " // " + attachments.length + " visiveis";
+      summary.textContent = (room && room.slug === "fotos" ? "Galeria viva" : "Biblioteca da sala") + " // filtro " + (state.mediaFilter === "all" ? "geral" : state.mediaFilter) + " // ordem " + mediaSortLabel(state.mediaSort) + " // " + attachments.length + " visiveis";
     }
     if (!attachments.length) {
       list.innerHTML = "<div class='empty-state'>Nenhum anexo bate com esse filtro nessa sala. Tenta limpar a busca ou trocar a ordem.</div>";
@@ -3676,7 +3722,7 @@
       var size = bytesLabel(attachment.sizeBytes);
       var dims = attachment.width && attachment.height ? (attachment.width + "x" + attachment.height) : "";
       card.innerHTML =
-        "<div class='media-card-head'><strong>" + esc(attachment.name) + "</strong><span class='ghost-pill'>" + esc(attachment.kind || "arquivo") + "</span></div>" +
+        "<div class='media-card-head'><strong>" + esc(attachment.name) + "</strong><span class='ghost-pill kind-pill'>" + esc(attachment.kind || "arquivo") + "</span></div>" +
         (attachmentUrl && attachment.kind === "image" ? "<button type='button' class='media-thumb' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><img alt='" + esc(attachment.name) + "' src='" + esc(attachmentUrl) + "' /></button>" : "") +
         (attachmentUrl && attachment.kind === "video" ? "<button type='button' class='media-thumb' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><video preload='metadata' muted src='" + esc(attachmentUrl) + "'></video></button>" : "") +
         (attachmentUrl && attachment.kind === "audio" ? "<audio controls preload='metadata' src='" + esc(attachmentUrl) + "'></audio>" : "") +
