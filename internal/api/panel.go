@@ -986,6 +986,9 @@ func (s *Server) requirePanelAuth(w http.ResponseWriter, r *http.Request) (model
 		writeError(w, http.StatusUnauthorized, err)
 		return model.PanelUser{}, model.PanelSession{}, "", false
 	}
+	if cookieValue := readPanelSessionCookieValue(r); strings.TrimSpace(cookieValue) != strings.TrimSpace(session.ID) {
+		writePanelCookie(w, r, session)
+	}
 	return user, session, sessionID, true
 }
 
@@ -1015,10 +1018,17 @@ func clearPanelCookie(w http.ResponseWriter, r *http.Request) {
 }
 
 func readPanelSessionID(r *http.Request) string {
+	if headerValue := strings.TrimSpace(r.Header.Get("X-Panel-Session")); headerValue != "" {
+		return headerValue
+	}
+	return readPanelSessionCookieValue(r)
+}
+
+func readPanelSessionCookieValue(r *http.Request) string {
 	if cookie, err := r.Cookie(panelSessionCookie); err == nil && cookie != nil && strings.TrimSpace(cookie.Value) != "" {
 		return strings.TrimSpace(cookie.Value)
 	}
-	return strings.TrimSpace(r.Header.Get("X-Panel-Session"))
+	return ""
 }
 
 func parseInt64Required(raw string) (int64, error) {

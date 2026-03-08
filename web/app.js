@@ -172,6 +172,11 @@
     return document.getElementById(id);
   }
 
+  function isPanelSessionManagedPath(path) {
+    var clean = String(path || "").trim();
+    return /^\/api\/panel\//.test(clean) && clean !== "/api/panel/login";
+  }
+
   function esc(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -2269,7 +2274,7 @@
     } catch (e) {}
     if (!response.ok) {
       var requestId = response.headers.get("X-Request-ID") || (data && data.requestId) || "";
-      if (response.status === 401 && path !== "/api/panel/login") {
+      if (response.status === 401 && isPanelSessionManagedPath(path)) {
         clearStoredSessionId();
         resetSession();
       }

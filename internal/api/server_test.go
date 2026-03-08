@@ -279,6 +279,66 @@ func TestOpsSummaryAcceptsBearerToken(t *testing.T) {
 	}
 }
 
+func TestReadPanelSessionIDPrefersHeaderOverCookie(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/panel/bootstrap", nil)
+	req.AddCookie(&http.Cookie{Name: panelSessionCookie, Value: "cookie-session"})
+	req.Header.Set("X-Panel-Session", "header-session")
+
+	if got := readPanelSessionID(req); got != "header-session" {
+		t.Fatalf("expected header session to win, got %q", got)
+	}
+}
+
+func TestPanelBootstrapRepairsCookieWhenHeaderSessionIsValid(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("PAINEL_DIEF_OWNER_PASSWORD", "TesteOwner#2026")
+
+	store, err := db.Open(filepath.Join(root, "panel-cookie-repair.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	user, session, err := panelSvc.Login("dief", "TesteOwner#2026")
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "staging",
+		DBPath:   filepath.Join(root, "panel-cookie-repair.db"),
+		OpsToken: "ops-secret",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/panel/bootstrap", nil)
+	req.Header.Set("X-Panel-Session", session.ID)
+	req.AddCookie(&http.Cookie{Name: panelSessionCookie, Value: "stale-cookie"})
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var repaired bool
+	for _, cookie := range w.Result().Cookies() {
+		if cookie.Name == panelSessionCookie && cookie.Value == session.ID {
+			repaired = true
+			break
+		}
+	}
+	if !repaired {
+		t.Fatalf("expected bootstrap to repair session cookie")
+	}
+
+	_ = user
+}
+
 func TestOpsExportRequiresTokenOutsideLoopback(t *testing.T) {
 	root := t.TempDir()
 	store, err := db.Open(filepath.Join(root, "server-export.db"))
