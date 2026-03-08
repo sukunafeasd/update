@@ -1,0 +1,13 @@
+/bin/
+/backups/
+/.runtime/
+/panel_uploads/
+*.db
+*.db-shm
+*.db-wal
+*.exe
+*.log
+.env
+.env.*
+!.env.production.example
+!.env.staging.example

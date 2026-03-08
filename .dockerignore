@@ -1,0 +1,11 @@
+.git
+.github
+.runtime
+ci
+panel_uploads
+universald.db
+universald.db-shm
+universald.db-wal
+*.log
+*.tmp
+*.exe

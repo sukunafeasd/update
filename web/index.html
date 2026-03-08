@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#06100c" />
+  <meta name="color-scheme" content="dark" />
+  <title>Painel Dief</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-theme="matrix">
+  <canvas id="matrix-bg" aria-hidden="true"></canvas>
+  <div id="noise-layer" aria-hidden="true"></div>
+  <div id="toast-stack" aria-live="polite"></div>
+
+  <section id="login-view" class="view">
+    <div class="login-shell">
+      <div class="login-card login-stage">
+        <div class="login-brand">
+          <div>
+            <strong>Painel Dief</strong>
+            <span>v1.4.4</span>
+          </div>
+        </div>
+
+        <form id="login-form" autocomplete="on">
+          <label for="login-input">Usuario ou Gmail cadastrado</label>
+          <input id="login-input" name="login" type="text" placeholder="usuario ou email" />
+
+          <label for="password-input">Senha</label>
+          <input id="password-input" name="password" type="password" placeholder="digita sem tremer" />
+
+          <button id="login-submit" type="submit" class="btn btn-primary btn-block">Entrar no Painel</button>
+        </form>
+
+        <p id="login-error" class="login-error hidden"></p>
+
+        <div class="login-footer">
+          <div class="boot-lines">
+            <span>Booting private grid...</span>
+            <span>Syncing secure channels...</span>
+            <span>Authenticating presence...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-view" class="view hidden">
+    <button id="mobile-backdrop" class="mobile-backdrop hidden" type="button" aria-label="Fechar paineis"></button>
+    <button id="btn-sidebar-peek" class="peek-button peek-left hidden" type="button" aria-label="Abrir navegacao">&#8250;</button>
+    <button id="btn-inspector-peek" class="peek-button peek-right hidden" type="button" aria-label="Abrir painel de apoio">&#8249;</button>
+
+    <div id="panel-shell">
+      <aside id="channel-panel">
+        <div class="channel-top">
+          <div class="sidebar-brand sidebar-heading">
+            <div>
+              <strong>Abas</strong>
+              <span id="active-filter-label">chat geral</span>
+            </div>
+          </div>
+        </div>
+        <button id="btn-sidebar-close" class="sidebar-edge-handle" type="button" aria-label="Recolher navegacao" title="Recolher navegacao">&#8249;</button>
+
+        <section id="viewer-card" class="glass-card hidden" aria-hidden="true">
+          <div class="viewer-row">
+          <div class="viewer-top">
+              <img id="viewer-avatar" alt="Avatar do usuario" />
+              <div>
+                <strong id="viewer-name">--</strong>
+                <span id="viewer-role">--</span>
+              </div>
+            </div>
+            <span id="viewer-status-pill" class="pill">online</span>
+          </div>
+          <p id="viewer-bio">Sem bio definida.</p>
+          <p id="viewer-status-copy" class="viewer-status-copy hidden">Sem status customizado.</p>
+          <div class="viewer-pills">
+            <span id="viewer-theme-pill" class="pill">matrix</span>
+            <span id="device-pill" class="pill">desktop mode</span>
+          </div>
+        </section>
+
+        <section class="sidebar-block sidebar-primary">
+          <div class="room-search compact-search">
+            <input id="room-filter-input" type="search" placeholder="Filtrar as 10 areas..." />
+          </div>
+
+          <div class="sidebar-scroll">
+            <nav id="room-list" class="primary-nav" aria-label="Navegacao principal"></nav>
+          </div>
+        </section>
+
+        <div class="hidden" aria-hidden="true">
+          <span id="room-count">10</span>
+          <span id="online-count">0</span>
+          <span id="stat-unread">0</span>
+        </div>
+        <div id="room-legend" class="room-legend hidden"></div>
+        <span id="presence-count" class="hidden">0</span>
+        <div id="presence-mini" class="hidden"></div>
+      </aside>
+
+      <main id="workspace">
+        <header id="topbar">
+          <div class="topbar-main">
+            <div class="room-header-top">
+              <button id="btn-sidebar-open" class="btn btn-ghost sidebar-toggle" type="button" aria-label="Abrir navegacao">&#8250;</button>
+              <span id="room-icon" class="room-icon">GL</span>
+              <div class="room-copy">
+                <h2 id="room-title">Chat Geral</h2>
+                <p id="room-description">Sala principal do painel.</p>
+              </div>
+            </div>
+
+            <div id="room-pill-row" class="room-pill-row">
+              <span id="room-type-badge" class="badge">canal</span>
+              <span id="room-access-badge" class="badge badge-live">aberta</span>
+              <span id="room-members-pill" class="badge">0 on</span>
+              <span id="stat-version" class="badge">v0</span>
+            </div>
+          </div>
+
+          <div class="topbar-actions">
+            <button id="btn-room-favorite" class="btn btn-ghost" type="button">Fixar area</button>
+            <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="members">Membros</button>
+            <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="files">Midia</button>
+            <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="search">Busca</button>
+            <button id="btn-inspector-toggle" class="btn btn-ghost" type="button">Apoio</button>
+            <button id="btn-guide" class="btn btn-ghost" type="button">Guia</button>
+            <button id="btn-audio-toggle" class="btn btn-ghost" type="button">Som on</button>
+            <button id="btn-profile" class="btn btn-ghost" type="button">Perfil</button>
+            <button id="btn-logout" class="btn btn-danger" type="button">Sair</button>
+          </div>
+        </header>
+
+        <section id="workspace-grid">
+          <section id="conversation-panel">
+            <div id="room-dashboard" class="dashboard-strip">
+              <article>
+                <span>Ultima atividade</span>
+                <strong id="dashboard-last-activity">--</strong>
+              </article>
+              <article>
+                <span>Online agora</span>
+                <strong id="dashboard-online-now">0</strong>
+              </article>
+              <article>
+                <span>Anexos nesta area</span>
+                <strong id="dashboard-room-files">0</strong>
+              </article>
+              <article>
+                <span>Modo</span>
+                <strong id="dashboard-room-mode">open</strong>
+              </article>
+              <article>
+                <span>Tema ativo</span>
+                <strong id="dashboard-theme">matrix</strong>
+              </article>
+              <article class="dashboard-tip-card">
+                <span>Nego Dramias diz</span>
+                <strong id="dashboard-nego-tip">Bah, escolhe uma sala e faz o estrago certo.</strong>
+              </article>
+            </div>
+
+            <section id="apps-lab-deck" class="apps-lab-deck hidden">
+              <article class="utility-card">
+                <div class="utility-head">
+                  <h4>Gerador rapido</h4>
+                  <span class="ghost-pill">apps lab</span>
+                </div>
+                <p class="utility-copy">Senha forte sem sair do painel. Boa pra sala, app ou teste.</p>
+                <div class="inline-row">
+                  <label for="apps-password-length">Tamanho</label>
+                  <input id="apps-password-length" type="range" min="10" max="32" step="1" value="18" />
+                  <span id="apps-password-size" class="ghost-pill">18 chars</span>
+                </div>
+                <input id="apps-password-output" type="text" readonly placeholder="Clica em gerar e o painel cospe uma senha forte." />
+                <div class="inline-row">
+                  <button id="btn-generate-password" class="btn btn-primary" type="button">Gerar senha</button>
+                  <button id="btn-copy-password" class="btn btn-ghost" type="button">Copiar</button>
+                </div>
+              </article>
+
+              <article class="utility-card">
+                <div class="utility-head">
+                  <h4>Bloco de notas local</h4>
+                  <span id="apps-notes-status" class="ghost-pill">salvo local</span>
+                </div>
+                <p class="utility-copy">Rascunha comando, ideia, snippet ou recado sem poluir o chat.</p>
+                <textarea id="apps-notes-input" rows="7" placeholder="Joga aqui teus lembretes do Apps Lab..."></textarea>
+                <div class="inline-row">
+                  <button id="btn-save-notes" class="btn btn-ghost" type="button">Salvar nota</button>
+                  <button id="btn-clear-notes" class="btn btn-ghost" type="button">Limpar</button>
+                </div>
+              </article>
+            </section>
+
+            <section id="room-state" class="state-card hidden">
+              <h3 id="room-state-title">Sala bloqueada</h3>
+              <p id="room-state-copy">Essa sala precisa de senha.</p>
+              <button id="btn-room-action" type="button" class="btn btn-primary">Destrancar</button>
+            </section>
+
+            <section id="pins-strip" class="pins-strip hidden"></section>
+
+            <section id="unread-banner" class="meta-chip hidden"></section>
+
+            <section id="message-stream" aria-live="polite"></section>
+
+            <div id="typing-indicator" class="typing-indicator hidden"></div>
+
+            <form id="composer-form" autocomplete="off">
+              <div id="edit-chip" class="meta-chip hidden"></div>
+              <div id="reply-chip" class="meta-chip hidden"></div>
+              <div id="pending-attachment" class="meta-chip hidden"></div>
+
+              <div class="composer-shell">
+                <textarea id="composer-input" rows="4" placeholder="Manda mensagem, usa /help, responde alguem ou sobe um anexo..."></textarea>
+
+              <div class="composer-actions">
+                <div class="composer-left">
+                  <button id="btn-attach" type="button" class="btn btn-ghost">Anexar</button>
+                  <button id="btn-ai" type="button" class="btn btn-ghost hidden">Perguntar pro Nego Dramias</button>
+                    <span id="composer-upload-hint" class="composer-hint">/help /logs /matrix /online</span>
+                </div>
+
+                  <button id="btn-send" type="submit" class="btn btn-primary">Enviar</button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </section>
+      </main>
+
+      <aside id="inspector-panel">
+        <div class="inspector-head">
+          <div>
+            <span class="eyebrow">apoio lateral</span>
+            <h3>Contexto do Painel</h3>
+          </div>
+          <button id="btn-inspector-close" class="btn btn-ghost sidebar-toggle" type="button" aria-label="Recolher painel de apoio">&#8250;</button>
+        </div>
+
+        <div class="inspector-body">
+          <section id="inspector-section-overview" class="inspector-section">
+            <div class="utility-head">
+              <h4>Visao rapida</h4>
+              <span class="ghost-pill">live</span>
+            </div>
+
+            <div class="overview-grid">
+              <article class="info-card">
+                <span>Sala ativa</span>
+                <strong id="overview-room-name">--</strong>
+                <p id="overview-room-copy">Sem sala ativa.</p>
+              </article>
+
+              <article class="info-card">
+                <span>Viewer</span>
+                <strong id="overview-viewer-name">--</strong>
+                <p id="overview-viewer-copy">Perfil do usuario conectado.</p>
+              </article>
+            </div>
+
+            <div class="info-card">
+              <div class="utility-head">
+                <h4>Feed ao vivo</h4>
+                <span class="ghost-pill">tempo real</span>
+              </div>
+              <div id="activity-feed" class="activity-feed"></div>
+            </div>
+
+            <div class="info-card">
+              <div class="utility-head">
+                <h4>Agenda da base</h4>
+                <span id="events-status-pill" class="ghost-pill">0 eventos</span>
+              </div>
+              <div id="event-list" class="event-list"></div>
+              <form id="event-form" class="stack-form">
+                <input id="event-title" type="text" maxlength="80" placeholder="Ex: ranked hoje 22h" />
+                <textarea id="event-description" rows="2" maxlength="220" placeholder="Descricao curta do rolê ou atividade..."></textarea>
+                <div class="inline-row">
+                  <input id="event-starts-at" type="datetime-local" />
+                  <select id="event-room-id"></select>
+                </div>
+              <button id="btn-event-submit" class="btn btn-ghost" type="submit">Criar evento</button>
+              </form>
+            </div>
+
+            <div class="info-card">
+              <div class="utility-head">
+                <h4>Momentos e destaques</h4>
+                <span id="moments-status-pill" class="ghost-pill">0 destaques</span>
+              </div>
+              <div id="moments-list" class="media-list"></div>
+            </div>
+
+            <div class="info-card">
+              <div class="utility-head">
+                <h4>Favoritos da sala</h4>
+                <span id="favorites-status-pill" class="ghost-pill">0 itens</span>
+              </div>
+              <div id="favorite-list" class="media-list"></div>
+            </div>
+
+            <div class="info-card">
+              <div class="utility-head">
+                <h4>Enquetes da sala</h4>
+                <span id="polls-status-pill" class="ghost-pill">0 enquetes</span>
+              </div>
+              <div id="poll-list" class="poll-list"></div>
+              <form id="poll-form" class="stack-form">
+                <input id="poll-question" type="text" maxlength="140" placeholder="Ex: Qual jogo fecha hoje?" />
+                <textarea id="poll-options" rows="3" maxlength="240" placeholder="Uma opcao por linha&#10;Valorant&#10;CS2&#10;Fortnite"></textarea>
+              <button id="btn-poll-submit" class="btn btn-ghost" type="submit">Criar enquete</button>
+              </form>
+            </div>
+          </section>
+
+          <section id="inspector-section-members" class="inspector-section">
+            <div class="utility-head">
+              <h4>Membros e status</h4>
+              <span id="members-status-pill" class="ghost-pill">0 online</span>
+            </div>
+            <div id="presence-sidebar" class="presence-list"></div>
+          </section>
+
+          <section id="inspector-section-files" class="inspector-section">
+            <div class="utility-head">
+              <h4>Anexos e midia</h4>
+              <span id="files-status-pill" class="ghost-pill">0 itens</span>
+            </div>
+            <div class="media-toolbar">
+              <input id="media-search-input" type="search" placeholder="Filtrar nome, tipo ou autor..." />
+              <div class="media-filters">
+                <button class="btn btn-ghost active" type="button" data-media-filter="all">Tudo</button>
+                <button class="btn btn-ghost" type="button" data-media-filter="image">Fotos</button>
+                <button class="btn btn-ghost" type="button" data-media-filter="video">Videos</button>
+                <button class="btn btn-ghost" type="button" data-media-filter="audio">Audios</button>
+                <button class="btn btn-ghost" type="button" data-media-filter="file">Arquivos</button>
+              </div>
+            </div>
+            <div id="room-media-list" class="media-list"></div>
+          </section>
+
+          <section id="inspector-section-search" class="inspector-section">
+            <div class="utility-head">
+              <h4>Busca</h4>
+              <span class="ghost-pill">global</span>
+            </div>
+            <form id="search-form" class="stack-form">
+              <input id="inspector-search-input" type="search" placeholder="Buscar neste universo..." />
+                <button id="btn-search-submit" class="btn btn-primary" type="submit">Rodar busca</button>
+            </form>
+            <div id="search-results" class="search-results"></div>
+          </section>
+
+          <section id="inspector-section-logs" class="inspector-section">
+            <div class="utility-head">
+              <h4>Logs do sistema</h4>
+              <button id="btn-refresh-logs" class="btn btn-ghost" type="button">Atualizar</button>
+            </div>
+            <div id="logs-list" class="logs-list"></div>
+          </section>
+
+          <section id="inspector-section-admin" class="inspector-section">
+            <section id="terminal-card" class="utility-card hidden">
+              <div class="utility-head">
+                <h4>Terminal Apps Lab</h4>
+                <span class="ghost-pill">admin</span>
+              </div>
+              <form id="terminal-form" class="stack-form">
+                <input id="terminal-input" type="text" placeholder="Ex: Get-Date ou dir" />
+                <button id="btn-terminal-submit" class="btn btn-ghost" type="submit">Rodar</button>
+              </form>
+              <pre id="terminal-output">Terminal dormindo.</pre>
+            </section>
+
+            <section id="owner-card" class="utility-card hidden">
+              <div class="utility-head">
+                <h4>Cadastro do dono</h4>
+                <span class="ghost-pill">owner</span>
+              </div>
+              <form id="create-user-form" class="stack-form">
+                <input id="create-user-name" type="text" placeholder="usuario" />
+                <input id="create-user-display" type="text" placeholder="nome visivel" />
+                <input id="create-user-email" type="email" placeholder="email" />
+                <input id="create-user-password" type="password" placeholder="senha inicial" />
+                <select id="create-user-role">
+                  <option value="member">membro</option>
+                  <option value="vip">vip</option>
+                  <option value="admin">admin</option>
+                </select>
+              <button id="btn-create-user-submit" class="btn btn-primary" type="submit">Cadastrar pessoa</button>
+              </form>
+              <div id="user-roster" class="roster-list"></div>
+            </section>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div id="profile-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Perfil personalizado</h3>
+        <button data-close-modal="profile-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+
+      <form id="profile-form" class="stack-form">
+        <div class="profile-grid">
+          <div>
+            <label for="profile-display">Nome visivel</label>
+            <input id="profile-display" type="text" />
+          </div>
+          <div>
+            <label for="profile-status">Status</label>
+            <select id="profile-status">
+              <option value="online">online</option>
+              <option value="busy">ocupado</option>
+              <option value="away">ausente</option>
+            </select>
+          </div>
+          <div>
+            <label for="profile-theme">Tema</label>
+            <select id="profile-theme">
+              <option value="matrix">matrix</option>
+              <option value="obsidian">obsidian</option>
+              <option value="ember">ember</option>
+              <option value="cobalt">cobalt</option>
+              <option value="neon">neon</option>
+            </select>
+          </div>
+          <div>
+            <label for="profile-accent">Cor de destaque</label>
+            <input id="profile-accent" type="color" value="#7bff00" />
+          </div>
+        </div>
+
+        <label for="profile-avatar">Avatar URL</label>
+        <div class="inline-row">
+          <input id="profile-avatar" type="text" placeholder="/uploads/teu-avatar.png" />
+          <button id="btn-upload-avatar" type="button" class="btn btn-ghost">Subir avatar</button>
+        </div>
+
+        <label for="profile-bio">Bio</label>
+        <textarea id="profile-bio" rows="4" placeholder="Descreve tua vibe gamer aqui."></textarea>
+
+        <label for="profile-status-text">Status personalizado</label>
+        <input id="profile-status-text" type="text" maxlength="80" placeholder="Ex: jogando ranked, programando, ocupado no momento..." />
+
+        <div>
+          <label>Presets do painel</label>
+          <div class="theme-preset-strip">
+            <button class="theme-preset" type="button" data-theme-preset="matrix" data-theme-accent="#7bff00">Matrix</button>
+            <button class="theme-preset" type="button" data-theme-preset="obsidian" data-theme-accent="#90a6ff">Obsidian</button>
+            <button class="theme-preset" type="button" data-theme-preset="ember" data-theme-accent="#ff7a42">Ember</button>
+            <button class="theme-preset" type="button" data-theme-preset="cobalt" data-theme-accent="#54b8ff">Cobalt</button>
+            <button class="theme-preset" type="button" data-theme-preset="neon" data-theme-accent="#ff5ad4">Neon</button>
+          </div>
+        </div>
+
+              <button id="btn-profile-submit" class="btn btn-primary" type="submit">Salvar perfil</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="member-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card narrow social-card">
+      <div class="modal-head">
+        <h3>Perfil do membro</h3>
+        <button data-close-modal="member-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+
+      <div class="social-profile-shell">
+        <div class="social-profile-top">
+          <div id="member-avatar" class="social-profile-avatar">PD</div>
+          <div class="social-profile-copy">
+            <strong id="member-name">--</strong>
+            <span id="member-meta">--</span>
+            <div class="viewer-pills">
+              <span id="member-status-pill" class="pill">offline</span>
+              <span id="member-theme-pill" class="pill">matrix</span>
+            </div>
+          </div>
+        </div>
+
+        <p id="member-bio" class="social-profile-bio">Sem bio carregada.</p>
+        <p id="member-status-copy" class="social-profile-status hidden">Sem status customizado.</p>
+
+        <div class="social-profile-grid">
+          <article class="info-card">
+            <span>Ultimo sinal</span>
+            <strong id="member-last-seen">--</strong>
+            <p id="member-relation-copy">Sem relacao especial.</p>
+          </article>
+        </div>
+
+        <div class="inline-row social-actions">
+          <button id="member-action-dm" class="btn btn-primary" type="button">Abrir DM</button>
+          <button id="member-action-block" class="btn btn-ghost" type="button">Bloquear</button>
+          <button id="member-action-mute" class="btn btn-ghost" type="button">Silenciar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="unlock-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card narrow">
+      <div class="modal-head">
+        <h3>Senha da sala</h3>
+        <button data-close-modal="unlock-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+      <p id="unlock-room-name">Digite a senha da sala.</p>
+      <form id="unlock-form" class="stack-form">
+        <input id="unlock-password" type="password" placeholder="senha secreta" />
+        <button class="btn btn-primary" type="submit">Destrancar</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="media-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card media-modal-card">
+      <div class="modal-head">
+        <h3 id="media-modal-title">Preview de midia</h3>
+        <button data-close-modal="media-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+
+      <div class="media-modal-layout">
+        <div id="media-modal-stage" class="media-modal-stage"></div>
+        <aside class="media-modal-side">
+          <div id="media-modal-meta" class="media-modal-meta"></div>
+          <div class="media-modal-actions">
+            <button id="media-modal-prev" class="btn btn-ghost" type="button">Anterior</button>
+            <button id="media-modal-next" class="btn btn-ghost" type="button">Proxima</button>
+            <a id="media-modal-download" class="btn btn-primary" href="#" target="_blank" rel="noreferrer">Baixar</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div id="guide-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card guide-card">
+      <div class="modal-head">
+        <h3>Guia rapido do Painel Dief</h3>
+        <button data-close-modal="guide-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+
+      <div class="guide-grid">
+        <article class="info-card">
+          <span>1. Navega na esquerda</span>
+          <strong>Uma area por vez</strong>
+          <p>As 10 areas principais ficam na barra lateral. Escolhe uma e o centro vira o foco daquele chat ou hub.</p>
+        </article>
+        <article class="info-card">
+          <span>2. Conversa no centro</span>
+          <strong>Chat, upload e resposta</strong>
+          <p>O rodape central sempre segura mensagem, anexo, resposta, edicao e arrastar-e-soltar sem sair da sala.</p>
+        </article>
+        <article class="info-card">
+          <span>3. Usa o apoio lateral</span>
+          <strong>Membros, busca, midia e agenda</strong>
+          <p>Na direita ficam arquivos, enquetes, eventos, favoritos, busca e a leitura viva do que esta acontecendo.</p>
+        </article>
+      </div>
+
+      <div class="guide-actions">
+        <button id="btn-guide-dismiss" class="btn btn-primary" type="button">Entendi</button>
+        <button id="btn-guide-remind" class="btn btn-ghost" type="button">Mostrar depois</button>
+      </div>
+    </div>
+  </div>
+
+  <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/mp4,.pdf,.zip,.rar,.7z,.txt,.md,.json,.csv,.log,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.js,.ts,.tsx,.jsx,.go,.py,.html,.css,.scss,.sql,.yaml,.yml,.toml,.ini" multiple hidden />
+  <input id="avatar-upload-input" type="file" accept="image/*" hidden />
+
+  <script src="/app.js"></script>
+</body>
+</html>

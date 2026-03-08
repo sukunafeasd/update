@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: painel-dief-staging
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: painel-dief-staging-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: UNIVERSALD_APP_ENV
+        value: staging
+      - key: UNIVERSALD_PUBLIC_ORIGIN
+        value: https://painel-dief-staging.onrender.com
+      - key: UNIVERSALD_DATA_DIR
+        value: /var/data
+      - key: UNIVERSALD_DB
+        value: /var/data/universald.db
+      - key: UNIVERSALD_UPLOADS
+        value: /var/data/panel_uploads
+      - key: UNIVERSALD_BACKUP_RETENTION_DAYS
+        value: "7"
+      - key: UNIVERSALD_MAINTENANCE_INTERVAL_SEC
+        value: "60"
+      - key: UNIVERSALD_OPEN
+        value: "false"
+      - key: UNIVERSALD_SAFE_MODE
+        value: "true"
