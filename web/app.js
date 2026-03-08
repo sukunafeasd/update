@@ -3419,14 +3419,57 @@
     openDownloadAccessModal();
   }
 
+  function tryOpenUniversalD(options) {
+    var opts = options || {};
+    var shouldFallbackDownload = !!opts.fallbackToDownload;
+    var source = String(opts.source || "painel-dief");
+    var protocolUrl = "universald://open?source=" + encodeURIComponent(source);
+    var cleared = false;
+
+    function clearFallback() {
+      if (cleared) {
+        return;
+      }
+      cleared = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("blur", clearFallback, true);
+      document.removeEventListener("visibilitychange", handleVisibility, true);
+    }
+
+    function handleVisibility() {
+      if (document.hidden) {
+        clearFallback();
+      }
+    }
+
+    var timer = window.setTimeout(function() {
+      clearFallback();
+      if (document.hidden) {
+        return;
+      }
+      if (shouldFallbackDownload) {
+        openDownloadAccessModal();
+      } else {
+        toast("Se o UniversalD nao abriu, baixa ou atualiza ele no Apps Lab.", "warn");
+      }
+    }, 1400);
+
+    window.addEventListener("blur", clearFallback, true);
+    document.addEventListener("visibilitychange", handleVisibility, true);
+    toast("Tentando abrir o UniversalD nativo...", "ok");
+    window.location.href = protocolUrl;
+  }
+
   function handleOpenAppShortcut() {
     var room = roomBySlug("apps-lab");
     if (room && Number(state.activeRoomId) !== Number(room.id)) {
       selectRoom(room.id);
-      toast("Atalho do UniversalD te levou pro Apps Lab.", "ok");
+      window.setTimeout(function() {
+        tryOpenUniversalD({ source: "apps-lab", fallbackToDownload: false });
+      }, 160);
       return;
     }
-    triggerUniversalDDownload();
+    tryOpenUniversalD({ source: "painel-topbar", fallbackToDownload: false });
   }
 
   function maybeOpenGuide() {
@@ -4297,12 +4340,18 @@
     detectMobile();
     window.addEventListener("resize", detectMobile);
     q("login-form").addEventListener("submit", handleLogin);
+    q("btn-login-open-app").addEventListener("click", function() {
+      tryOpenUniversalD({ source: "login", fallbackToDownload: true });
+    });
     q("btn-login-download").addEventListener("click", openDownloadAccessModal);
     q("btn-login-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-logout").addEventListener("click", handleLogout);
     q("btn-profile").addEventListener("click", openProfileModal);
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("btn-app-open").addEventListener("click", function() {
+      tryOpenUniversalD({ source: "apps-lab", fallbackToDownload: false });
+    });
     q("btn-app-download").addEventListener("click", triggerUniversalDDownload);
     q("btn-app-guide").addEventListener("click", function() { openGuideModal(true); });
     q("download-access-form").addEventListener("submit", handleDownloadAccessSubmit);
