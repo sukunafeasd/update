@@ -46,6 +46,18 @@
     "\uD83C\uDF89 Bah tche, agora sim abriu bonito."
   ];
   var APP_DOWNLOAD_URL = "/downloads/universalD.exe";
+  var UNIVERSALD_META = {
+    version: "3.1.0-desktop-native",
+    shortVersion: "v3.1.0",
+    sizeLabel: "14.55 MB",
+    sha256: "3C9FF84A0EA47C79BDA8E2EE7BAE8504716DBC2145D0C75C8EEBEC5EDB76C097",
+    changelog: [
+      "Login do app desktop limpo, sem senha exposta e com ajuste melhor pra janela menor.",
+      "Registro nativo do protocolo universald:// pra abrir a base direto do site.",
+      "Abertura do app reaproveita a instancia em execucao em vez de largar outra solta.",
+      "Build privado renovado e pronto pra baixar com senha pela base oficial."
+    ]
+  };
   var THEME_PRESETS = {
     matrix: { label: "Matrix", accent: "#7bff00" },
     obsidian: { label: "Obsidian", accent: "#90a6ff" },
@@ -102,7 +114,12 @@
     audioEnabled: true,
     audioContext: null,
     appsNotesDraft: "",
-    favoriteNavIds: []
+    favoriteNavIds: [],
+    focusMode: false,
+    connectionStatus: "syncing",
+    lastStreamAt: 0,
+    appInstalled: false,
+    appInstallSeenAt: 0
   };
 
   function q(id) {
@@ -708,6 +725,14 @@
     return "painel-dief.favorite-navs." + Number(state.viewer && state.viewer.id || 0);
   }
 
+  function focusModeStorageKey() {
+    return "painel-dief.focus-mode." + Number(state.viewer && state.viewer.id || 0);
+  }
+
+  function appInstallStorageKey() {
+    return "painel-dief.app-install-state";
+  }
+
   function loadAppsNotes() {
     try {
       return window.localStorage.getItem(notesStorageKey()) || "";
@@ -749,6 +774,146 @@
 
   function isFavoriteNavId(navId) {
     return (state.favoriteNavIds || []).indexOf(String(navId)) >= 0;
+  }
+
+  function loadFocusMode() {
+    try {
+      return window.localStorage.getItem(focusModeStorageKey()) === "1";
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function saveFocusMode() {
+    try {
+      window.localStorage.setItem(focusModeStorageKey(), state.focusMode ? "1" : "0");
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function loadAppInstallState() {
+    try {
+      var raw = window.localStorage.getItem(appInstallStorageKey()) || "";
+      var parsed = raw ? JSON.parse(raw) : {};
+      state.appInstalled = !!parsed.installed;
+      state.appInstallSeenAt = Number(parsed.seenAt || 0);
+    } catch (err) {
+      state.appInstalled = false;
+      state.appInstallSeenAt = 0;
+    }
+  }
+
+  function saveAppInstallState(installed) {
+    state.appInstalled = !!installed;
+    state.appInstallSeenAt = installed ? Date.now() : 0;
+    try {
+      window.localStorage.setItem(appInstallStorageKey(), JSON.stringify({
+        installed: !!installed,
+        seenAt: state.appInstallSeenAt
+      }));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function syncFocusModeUI() {
+    var button = q("btn-focus-mode");
+    if (!button) {
+      return;
+    }
+    button.textContent = state.focusMode ? "Foco on" : "Foco off";
+    button.classList.toggle("active", !!state.focusMode);
+  }
+
+  function appInstallLabel() {
+    return state.appInstalled ? "app detectado" : "app nao detectado";
+  }
+
+  function appInstallCopy() {
+    if (!state.appInstalled) {
+      return "Se tu ja instalou, usa Abrir no app. Quando o protocolo responder, o painel confirma isso aqui.";
+    }
+    if (!state.appInstallSeenAt) {
+      return "O protocolo do app ja respondeu nesta maquina.";
+    }
+    return "Detectado nesta maquina em " + formatDateTime(state.appInstallSeenAt) + ".";
+  }
+
+  function syncAppInstallStatus() {
+    var label = appInstallLabel();
+    if (q("login-app-status-pill")) {
+      q("login-app-status-pill").textContent = label;
+    }
+    if (q("apps-app-status-pill")) {
+      q("apps-app-status-pill").textContent = label;
+    }
+    if (q("app-center-install-pill")) {
+      q("app-center-install-pill").textContent = label;
+    }
+    if (q("app-center-install-label")) {
+      q("app-center-install-label").textContent = state.appInstalled ? "App detectado nesta maquina" : "App ainda nao detectado";
+    }
+    if (q("app-center-install-copy")) {
+      q("app-center-install-copy").textContent = appInstallCopy();
+    }
+    if (q("app-center-version-pill")) {
+      q("app-center-version-pill").textContent = UNIVERSALD_META.shortVersion;
+    }
+    if (q("app-center-build-copy")) {
+      q("app-center-build-copy").textContent = UNIVERSALD_META.version;
+    }
+    if (q("app-center-sha-copy")) {
+      q("app-center-sha-copy").textContent = "SHA " + UNIVERSALD_META.sha256.slice(0, 16) + "...";
+    }
+    if (q("app-center-size-copy")) {
+      q("app-center-size-copy").textContent = UNIVERSALD_META.sizeLabel;
+    }
+    if (q("app-center-origin-copy")) {
+      q("app-center-origin-copy").textContent = "Distribuido por " + window.location.origin;
+    }
+  }
+
+  function renderAppCenter() {
+    if (!q("app-center-changelog-list")) {
+      return;
+    }
+    q("app-center-protocol-pill").textContent = "universald://";
+    q("app-center-changelog-list").innerHTML = UNIVERSALD_META.changelog.map(function(item) {
+      return "<li>" + esc(item) + "</li>";
+    }).join("");
+    syncAppInstallStatus();
+  }
+
+  function setConnectionStatus(status) {
+    state.connectionStatus = String(status || "syncing");
+    renderConnectionStatus();
+  }
+
+  function renderConnectionStatus() {
+    var badge = q("connection-badge");
+    var label = "sync";
+    var tone = "badge-sync";
+    if (!badge) {
+      return;
+    }
+    if (state.connectionStatus === "live") {
+      label = "live";
+      tone = "badge badge-sync live";
+    } else if (state.connectionStatus === "unstable") {
+      label = "oscilando";
+      tone = "badge badge-sync unstable";
+    } else if (state.connectionStatus === "offline") {
+      label = "offline";
+      tone = "badge badge-sync offline";
+    } else {
+      label = "sync";
+      tone = "badge badge-sync";
+    }
+    badge.className = tone;
+    badge.textContent = label;
   }
 
   function syncThemePresetState() {
@@ -1034,8 +1199,32 @@
       }
     }
     q("device-pill").textContent = state.isMobile ? "mobile mode" : (state.compactLayout ? "compact mode" : "desktop mode");
+    applyFocusMode();
     syncBackdrop();
     syncPeekButtons();
+  }
+
+  function applyFocusMode() {
+    document.body.classList.toggle("focus-mode", !!state.focusMode);
+    if (!state.focusMode) {
+      syncFocusModeUI();
+      return;
+    }
+    document.body.classList.remove("sidebar-open");
+    document.body.classList.remove("inspector-open");
+    document.body.classList.add("sidebar-collapsed");
+    document.body.classList.add("inspector-collapsed");
+    syncFocusModeUI();
+    syncBackdrop();
+    syncPeekButtons();
+  }
+
+  function toggleFocusMode() {
+    state.focusMode = !state.focusMode;
+    saveFocusMode();
+    applyFocusMode();
+    renderHeaderAndRoomState();
+    toast(state.focusMode ? "Modo foco ligado. Agora o chat respira." : "Modo foco desligado. A base voltou completa.", "ok");
   }
 
   function syncBackdrop() {
@@ -1300,6 +1489,7 @@
     q("panel-view").classList.remove("hidden");
     closeInspector();
     maybeOpenGuide();
+    renderAppCenter();
   }
 
   function resetSession() {
@@ -1339,6 +1529,9 @@
     state.typingSent = false;
     state.roomSearch = "";
     state.compactLayout = false;
+    state.focusMode = false;
+    state.connectionStatus = "offline";
+    state.lastStreamAt = 0;
     state.favoriteNavIds = [];
     if (state.stream) {
       state.stream.close();
@@ -1357,9 +1550,12 @@
     document.body.classList.remove("sidebar-collapsed");
     document.body.classList.remove("inspector-collapsed");
     document.body.classList.remove("compact");
+    document.body.classList.remove("focus-mode");
     q("room-filter-input").value = "";
     syncBackdrop();
     syncPeekButtons();
+    renderConnectionStatus();
+    syncAppInstallStatus();
     showLogin("Tua sessao caiu. Faz o login de novo.");
   }
 
@@ -1409,6 +1605,7 @@
     state.previousOnlineMap = onlineMap(state.online);
     state.appsNotesDraft = loadAppsNotes();
     state.favoriteNavIds = loadFavoriteNavIds();
+    state.focusMode = loadFocusMode();
     syncPendingAttachmentAlias();
     q("room-filter-input").value = state.roomSearch;
     if (!roomById(state.activeRoomId)) {
@@ -1418,6 +1615,9 @@
     applyTheme();
     requestNotificationsPermission();
     renderShell();
+    applyFocusMode();
+    renderAppCenter();
+    setConnectionStatus("syncing");
     if (state.activeRoomId) {
       selectRoom(state.activeRoomId, true);
     }
@@ -1471,6 +1671,9 @@
     q("viewer-status-copy").textContent = viewerStatusText || "Sem status customizado.";
     q("viewer-status-copy").classList.toggle("hidden", !viewerStatusText);
     q("btn-audio-toggle").textContent = state.audioEnabled ? "Som on" : "Som off";
+    syncFocusModeUI();
+    syncAppInstallStatus();
+    renderConnectionStatus();
     q("overview-viewer-name").textContent = state.viewer.displayName || state.viewer.username;
     q("overview-viewer-copy").textContent = viewerStatusText || ((state.viewer.role || "member") + " // " + themeLabel(state.viewer.theme || "matrix"));
     q("composer-upload-hint").textContent = "/help /logs /matrix /online // upload ate " + uploadLimitLabel();
@@ -3369,6 +3572,11 @@
     q("guide-modal").classList.remove("hidden");
   }
 
+  function openAppCenterModal() {
+    renderAppCenter();
+    q("app-center-modal").classList.remove("hidden");
+  }
+
   function resetDownloadAccessState() {
     q("download-access-password").value = "";
     q("download-access-error").classList.add("hidden");
@@ -3423,7 +3631,14 @@
     var opts = options || {};
     var shouldFallbackDownload = !!opts.fallbackToDownload;
     var source = String(opts.source || "painel-dief");
+    var room = activeRoom();
     var protocolUrl = "universald://open?source=" + encodeURIComponent(source);
+    if (state.activeNavId) {
+      protocolUrl += "&nav=" + encodeURIComponent(state.activeNavId);
+    }
+    if (room && room.slug) {
+      protocolUrl += "&room=" + encodeURIComponent(room.slug);
+    }
     var cleared = false;
 
     function clearFallback() {
@@ -3438,6 +3653,9 @@
 
     function handleVisibility() {
       if (document.hidden) {
+        saveAppInstallState(true);
+        syncAppInstallStatus();
+        renderAppCenter();
         clearFallback();
       }
     }
@@ -3947,7 +4165,12 @@
     if (state.heartbeatTimer) {
       window.clearInterval(state.heartbeatTimer);
     }
-    state.heartbeatTimer = window.setInterval(sendPresence, 15000);
+    state.heartbeatTimer = window.setInterval(function() {
+      if (state.lastStreamAt && Date.now() - state.lastStreamAt > 30000) {
+        setConnectionStatus("unstable");
+      }
+      sendPresence();
+    }, 15000);
     sendPresence();
   }
 
@@ -4002,11 +4225,13 @@
 
   function setupStream() {
     if (!window.EventSource) {
+      setConnectionStatus("unstable");
       return;
     }
     if (state.stream) {
       state.stream.close();
     }
+    setConnectionStatus("syncing");
     state.stream = new EventSource("/api/panel/stream");
     state.stream.addEventListener("snapshot", function(event) {
       try {
@@ -4014,6 +4239,7 @@
       } catch (e) {}
     });
     state.stream.onerror = function() {
+      setConnectionStatus("unstable");
       pushActivity("Stream oscilou, tentando reconectar sozinho.", "warn");
     };
   }
@@ -4026,6 +4252,8 @@
     var nextRoomVersions = payload.roomVersions || {};
     var nextActiveRoomVersion = Number(nextRoomVersions[activeRoomId] || previousRoomVersion || 0);
     var nextVersion = Number(payload.version || state.version || 0);
+    state.lastStreamAt = Date.now();
+    setConnectionStatus("live");
     syncRoomLatestChanges(nextLatestMap);
     compareOnlinePresence(payload.online || []);
 
@@ -4344,16 +4572,28 @@
       tryOpenUniversalD({ source: "login", fallbackToDownload: true });
     });
     q("btn-login-download").addEventListener("click", openDownloadAccessModal);
-    q("btn-login-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("btn-login-guide").addEventListener("click", openAppCenterModal);
     q("btn-logout").addEventListener("click", handleLogout);
     q("btn-profile").addEventListener("click", openProfileModal);
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("btn-focus-mode").addEventListener("click", toggleFocusMode);
     q("btn-app-open").addEventListener("click", function() {
       tryOpenUniversalD({ source: "apps-lab", fallbackToDownload: false });
     });
     q("btn-app-download").addEventListener("click", triggerUniversalDDownload);
-    q("btn-app-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("btn-app-guide").addEventListener("click", openAppCenterModal);
+    q("btn-app-center-open").addEventListener("click", function() {
+      tryOpenUniversalD({ source: "app-center", fallbackToDownload: true });
+    });
+    q("btn-app-center-download").addEventListener("click", triggerUniversalDDownload);
+    q("btn-app-center-copy").addEventListener("click", function() {
+      copyText(window.location.origin, "Link da base copiado.", "Nao consegui copiar o link da base.");
+    });
+    q("btn-app-center-guide").addEventListener("click", function() {
+      closeModal("app-center-modal");
+      openGuideModal(true);
+    });
     q("download-access-form").addEventListener("submit", handleDownloadAccessSubmit);
     q("btn-room-favorite").addEventListener("click", toggleActiveNavFavorite);
     q("member-action-dm").addEventListener("click", handleMemberDMAction);
@@ -4514,6 +4754,7 @@
         closeModal("unlock-modal");
         closeModal("media-modal");
         closeModal("guide-modal");
+        closeModal("app-center-modal");
         closeModal("download-access-modal");
         closeSidebar();
         closeInspector();
@@ -4543,6 +4784,9 @@
       }
       if (target === q("guide-modal")) {
         closeModal("guide-modal");
+      }
+      if (target === q("app-center-modal")) {
+        closeModal("app-center-modal");
       }
       if (target === q("download-access-modal")) {
         closeModal("download-access-modal");
@@ -4623,7 +4867,11 @@
   }
 
   function init() {
+    loadAppInstallState();
     startMatrixBackground();
+    renderAppCenter();
+    syncAppInstallStatus();
+    renderConnectionStatus();
     bindEvents();
     tryBootstrap();
   }

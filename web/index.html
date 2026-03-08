@@ -48,8 +48,9 @@
           <div class="login-download-actions">
             <button id="btn-login-open-app" class="btn btn-primary" type="button">Abrir no app</button>
             <button id="btn-login-download" class="btn btn-ghost btn-download" type="button">Baixar UniversalD</button>
-            <button id="btn-login-guide" class="btn btn-ghost" type="button">Ver novidades</button>
+            <button id="btn-login-guide" class="btn btn-ghost" type="button">Central do App</button>
             <span class="ghost-pill">Windows app oficial</span>
+            <span id="login-app-status-pill" class="ghost-pill">app nao detectado</span>
             <span class="ghost-pill">14 MB</span>
           </div>
         </section>
@@ -137,11 +138,13 @@
               <span id="room-type-badge" class="badge">canal</span>
               <span id="room-access-badge" class="badge badge-live">aberta</span>
               <span id="room-members-pill" class="badge">0 on</span>
+              <span id="connection-badge" class="badge badge-sync">sync</span>
               <span id="stat-version" class="badge">v0</span>
             </div>
 
             <div class="topbar-utility-strip">
               <button id="btn-room-favorite" class="btn btn-ghost" type="button">Fixar area</button>
+              <button id="btn-focus-mode" class="btn btn-ghost" type="button">Foco off</button>
               <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="members">Membros</button>
               <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="files">Midia</button>
               <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="search">Busca</button>
@@ -191,7 +194,7 @@
               <article class="utility-card">
                 <div class="utility-head">
                   <h4>UniversalD desktop</h4>
-                  <span class="ghost-pill">privado</span>
+                  <span id="apps-app-status-pill" class="ghost-pill">app nao detectado</span>
                 </div>
                 <p class="utility-copy">Baixa ou atualiza o app oficial do Painel Dief pra usar fora do navegador com a mesma identidade da base.</p>
                 <div class="inline-row">
@@ -201,7 +204,7 @@
                 <div class="inline-row">
                   <button id="btn-app-open" class="btn btn-ghost" type="button">Abrir agora</button>
                   <button id="btn-app-download" class="btn btn-primary" type="button">Baixar ou atualizar</button>
-                  <button id="btn-app-guide" class="btn btn-ghost" type="button">Ver novidades</button>
+                  <button id="btn-app-guide" class="btn btn-ghost" type="button">Central do App</button>
                 </div>
               </article>
 
@@ -611,6 +614,66 @@
       <div class="guide-actions">
         <button id="btn-guide-dismiss" class="btn btn-primary" type="button">Entendi</button>
         <button id="btn-guide-remind" class="btn btn-ghost" type="button">Mostrar depois</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-center-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card app-center-card">
+      <div class="modal-head">
+        <h3>Central do App</h3>
+        <button data-close-modal="app-center-modal" class="btn btn-ghost" type="button">Fechar</button>
+      </div>
+
+      <div class="app-center-grid">
+        <article class="info-card app-center-hero">
+          <span>UniversalD desktop</span>
+          <strong>App oficial privado do Painel Dief</strong>
+          <p>Abre o painel no Windows, responde ao protocolo nativo e fica pronto para integrar com a base sem depender do navegador.</p>
+          <div class="inline-row">
+            <span id="app-center-install-pill" class="ghost-pill">app nao detectado</span>
+            <span id="app-center-protocol-pill" class="ghost-pill">universald://</span>
+            <span id="app-center-version-pill" class="ghost-pill">v3.1.0</span>
+          </div>
+          <div class="inline-row">
+            <button id="btn-app-center-open" class="btn btn-primary" type="button">Abrir no app</button>
+            <button id="btn-app-center-download" class="btn btn-ghost" type="button">Baixar ou atualizar</button>
+            <button id="btn-app-center-copy" class="btn btn-ghost" type="button">Copiar link</button>
+          </div>
+        </article>
+
+        <article class="info-card">
+          <span>Status</span>
+          <strong id="app-center-install-label">App ainda nao detectado</strong>
+          <p id="app-center-install-copy">Se tu ja instalou, usa o botao abrir no app. Quando o protocolo responder, o painel marca isso aqui.</p>
+        </article>
+
+        <article class="info-card">
+          <span>Build atual</span>
+          <strong id="app-center-build-copy">3.1.0-desktop-native</strong>
+          <p id="app-center-sha-copy">SHA 3C9FF84A0EA4...</p>
+        </article>
+
+        <article class="info-card">
+          <span>Pacote</span>
+          <strong id="app-center-size-copy">14.55 MB</strong>
+          <p id="app-center-origin-copy">Distribuido pela base oficial do Painel Dief.</p>
+        </article>
+
+        <article class="info-card app-center-changelog">
+          <span>Ultimas novidades</span>
+          <strong>O que mudou no app</strong>
+          <ul id="app-center-changelog-list" class="app-changelog-list"></ul>
+        </article>
+
+        <article class="info-card">
+          <span>Fluxo rapido</span>
+          <strong>Entrar sem drama</strong>
+          <p>1. Baixa o app. 2. Abre uma vez. 3. Volta no site e usa Abrir no app.</p>
+          <div class="guide-actions">
+            <button id="btn-app-center-guide" class="btn btn-ghost" type="button">Ver guia do painel</button>
+          </div>
+        </article>
       </div>
     </div>
   </div>
