@@ -47,10 +47,10 @@
   ];
   var APP_DOWNLOAD_URL = "/downloads/universalD.exe";
   var UNIVERSALD_META = {
-    version: "3.1.2-desktop-native",
-    shortVersion: "v3.1.2",
+    version: "3.1.3-desktop-native",
+    shortVersion: "v3.1.3",
     sizeLabel: "16.13 MB",
-    sha256: "4BB44335F95D95130007173DD5160D6C21A7B537266D86C7D5597B217300D1F8",
+    sha256: "DB156B2648BAE5FB5995CFDA9655375CB959A4FFDC24DDE37F9133C242F8665F",
     changelog: [
       "Login do app desktop refeito em modo compatível com o motor nativo do exe.",
       "Sessão do painel agora tem fallback local para sobreviver melhor a reload e cookie ruim.",
