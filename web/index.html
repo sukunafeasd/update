@@ -155,6 +155,7 @@
               <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="search">Busca</button>
               <button id="btn-inspector-toggle" class="btn btn-ghost" type="button">Apoio</button>
               <button id="btn-guide" class="btn btn-ghost" type="button">Guia</button>
+              <button id="btn-browser-notify" class="btn btn-ghost" type="button">Push off</button>
               <button id="btn-audio-toggle" class="btn btn-ghost" type="button">Som on</button>
             </div>
           </div>
@@ -194,6 +195,9 @@
               </article>
             </div>
             <div id="dashboard-quickline" class="dashboard-quickline"></div>
+
+            <section id="direct-hub-deck" class="context-deck hidden"></section>
+            <section id="room-spotlight" class="context-deck hidden"></section>
 
             <section id="apps-lab-deck" class="apps-lab-deck hidden">
               <article class="utility-card">
@@ -393,6 +397,7 @@
               </select>
             </div>
             <div id="members-summary" class="section-summary">Carregando a tropa...</div>
+            <div id="members-insights" class="members-insights"></div>
             <div id="presence-sidebar" class="presence-list"></div>
           </section>
 
@@ -558,6 +563,7 @@
         </div>
 
         <section class="profile-preview-card">
+          <div id="profile-preview-banner" class="profile-preview-banner"></div>
           <div id="profile-preview-avatar" class="social-profile-avatar">PD</div>
           <div class="profile-preview-copy">
             <strong id="profile-preview-name">Painel Dief</strong>
@@ -580,6 +586,7 @@
       </div>
 
       <div class="social-profile-shell">
+        <div id="member-banner" class="member-banner"></div>
         <div class="social-profile-top">
           <div id="member-avatar" class="social-profile-avatar">PD</div>
           <div class="social-profile-copy">

@@ -1169,6 +1169,11 @@ body.sidebar-collapsed #channel-panel {
   align-items: center;
 }
 
+.presence-item .presence-room-copy {
+  color: color-mix(in srgb, var(--text) 74%, var(--muted));
+  font-size: 0.78rem;
+}
+
 .presence-headline .identity-name {
   font-weight: 700;
 }
@@ -1532,6 +1537,133 @@ body.focus-mode #btn-sidebar-open {
   padding-bottom: 0.1rem;
 }
 
+.context-deck {
+  display: grid;
+  gap: 0.8rem;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.direct-hub-grid,
+.spotlight-grid,
+.members-insights {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.direct-hub-grid,
+.spotlight-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.members-insights {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.direct-card,
+.spotlight-card,
+.insight-card {
+  padding: 0.95rem;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.direct-card,
+.spotlight-card {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.direct-card-head,
+.spotlight-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.direct-peer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  min-width: 0;
+}
+
+.direct-peer-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  display: grid;
+  place-items: center;
+  object-fit: cover;
+  font-family: var(--font-display);
+  flex: 0 0 auto;
+}
+
+.direct-peer-copy,
+.direct-card-copy,
+.spotlight-card-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.direct-peer-copy strong,
+.direct-card-copy strong,
+.spotlight-card-copy strong,
+.insight-card strong {
+  overflow-wrap: anywhere;
+}
+
+.direct-peer-copy span {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.direct-card-copy p,
+.spotlight-card-copy p,
+.insight-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.spotlight-media {
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,0.2);
+}
+
+.spotlight-media img,
+.spotlight-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.members-insights .insight-card {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.members-insights .insight-card span {
+  font-size: 0.76rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .apps-lab-deck {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1704,6 +1836,33 @@ body.focus-mode #btn-sidebar-open {
 .theme-preset.active {
   border-color: color-mix(in srgb, var(--accent) 58%, transparent);
   background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.profile-preview-card,
+.social-profile-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-preview-banner,
+.member-banner {
+  height: 84px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 26%, transparent), transparent 38%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), rgba(255,255,255,0.02));
+}
+
+.profile-preview-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.profile-preview-card .social-profile-avatar,
+.social-profile-shell .social-profile-avatar {
+  margin-top: -34px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.28);
 }
 
 .state-card,
@@ -2806,6 +2965,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     grid-template-columns: 1fr;
   }
 
+  .topbar-utility-strip {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
   .sus-trigger {
     min-width: min(100%, 240px);
   }
@@ -2966,6 +3130,12 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     width: 100%;
   }
 
+  .direct-hub-grid,
+  .spotlight-grid,
+  .members-insights {
+    grid-template-columns: 1fr;
+  }
+
   #conversation-panel {
     padding: 0.85rem;
   }
@@ -2977,6 +3147,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .room-header-top {
     align-items: flex-start;
+  }
+
+  .profile-preview-banner,
+  .member-banner {
+    height: 68px;
   }
 
   .room-icon {

@@ -377,6 +377,25 @@
     return themeMeta(theme).accent;
   }
 
+  function normalizeAccentColor(value, fallback) {
+    var clean = String(value || "").trim();
+    if (/^#[0-9a-f]{3}$/i.test(clean)) {
+      return "#" + clean.slice(1).split("").map(function(char) { return char + char; }).join("");
+    }
+    if (/^#[0-9a-f]{6}$/i.test(clean) || /^#[0-9a-f]{8}$/i.test(clean)) {
+      return clean;
+    }
+    return String(fallback || "#7bff00");
+  }
+
+  function panelBannerStyle(theme, accent) {
+    var base = normalizeAccentColor(themeAccent(theme), "#7bff00");
+    var tone = normalizeAccentColor(accent, base);
+    return "radial-gradient(circle at 14% 18%, " + tone + "66 0%, transparent 34%), " +
+      "radial-gradient(circle at 84% 12%, " + base + "55 0%, transparent 28%), " +
+      "linear-gradient(135deg, rgba(6,10,18,0.98) 0%, rgba(10,18,28,0.94) 48%, rgba(8,12,20,0.98) 100%)";
+  }
+
   function normalizeText(value) {
     return String(value || "")
       .toLowerCase()
@@ -474,6 +493,10 @@
   }
 
   function primaryDirectRoom() {
+    return directRoomsSorted()[0] || null;
+  }
+
+  function directRoomsSorted() {
     var dms = state.rooms.filter(function(room) {
       return room.scope === "dm";
     }).slice(0);
@@ -482,7 +505,7 @@
       var stampB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
       return stampB - stampA;
     });
-    return dms[0] || null;
+    return dms;
   }
 
   function navDefinition(id) {
@@ -1234,6 +1257,126 @@
     }
   }
 
+  function renderDirectHubDeck() {
+    var wrap = q("direct-hub-deck");
+    var rooms;
+    if (!wrap) {
+      return;
+    }
+    if (state.activeNavId !== "diretas") {
+      wrap.classList.add("hidden");
+      wrap.innerHTML = "";
+      return;
+    }
+    rooms = directRoomsSorted();
+    wrap.classList.remove("hidden");
+    if (!rooms.length) {
+      wrap.innerHTML =
+        "<div class='empty-state'>Ainda nao existe DM aberta. Vai em membros, escolhe alguem e puxa a primeira conversa.</div>";
+      return;
+    }
+    wrap.innerHTML =
+      "<div class='direct-hub-grid'>" +
+        rooms.slice(0, 4).map(function(room) {
+          var peer = directPeerProfile(room);
+          var unread = Number(state.unread[String(room.id)] || 0);
+          var latest = state.latestByRoom[String(room.id)] || {};
+          var statusCopy = personStatusCopy(peer);
+          var liveCopy = peer && peer.online ? (peer.status || "online") : "offline";
+          var preview = latest.body || (latest.attachment ? "[anexo] " + latest.attachment.name : "Sem mensagem recente.");
+          return "<article class='direct-card'>" +
+            "<div class='direct-card-head'>" +
+              directPeerAvatarMarkup(room) +
+              "<div class='direct-peer-copy'>" +
+                "<strong>" + esc(displayRoomName(room)) + "</strong>" +
+                "<span>" + esc(liveCopy + (statusCopy ? (" // " + statusCopy) : "")) + "</span>" +
+              "</div>" +
+              (unread ? "<span class='ghost-pill'>" + unread + " novas</span>" : "<span class='ghost-pill'>" + esc(room.lastMessageAt ? formatRelative(room.lastMessageAt) : "sem rastro") + "</span>") +
+            "</div>" +
+            "<div class='direct-card-copy'>" +
+              "<strong>" + esc(peer && peer.roomId ? "na base agora" : "ultimas trocas") + "</strong>" +
+              "<p>" + esc(preview.slice(0, 140)) + "</p>" +
+            "</div>" +
+            "<div class='inline-row'>" +
+              "<button class='btn btn-ghost' type='button' data-room-id='" + Number(room.id) + "'>Abrir DM</button>" +
+              "<button class='btn btn-ghost' type='button' data-action='open-user-profile' data-user-id='" + Number(room.peerUserId || 0) + "'>Perfil</button>" +
+            "</div>" +
+          "</article>";
+        }).join("") +
+      "</div>";
+  }
+
+  function renderRoomSpotlight() {
+    var wrap = q("room-spotlight");
+    var room = activeRoom();
+    var attachments;
+    if (!wrap) {
+      return;
+    }
+    if (!room || isAppsLabRoom(room) || isHubView() || room.category !== "media") {
+      wrap.classList.add("hidden");
+      wrap.innerHTML = "";
+      return;
+    }
+    attachments = filteredRoomAttachments().slice(0, 3);
+    wrap.classList.remove("hidden");
+    if (!attachments.length) {
+      wrap.innerHTML = "<div class='empty-state'>Essa area ainda nao tem midia em destaque. Solta foto, video ou arquivo e a vitrine acorda.</div>";
+      return;
+    }
+    wrap.innerHTML =
+      "<div class='spotlight-grid'>" +
+        attachments.map(function(message) {
+          var attachment = message.attachment;
+          var attachmentUrl = safeAttachmentUrl(attachment && attachment.url);
+          var mediaMarkup = "<div class='media-file-fallback'><strong>" + esc((attachment.extension || attachment.kind || "arquivo").toUpperCase()) + "</strong><span>" + esc(bytesLabel(attachment.sizeBytes)) + "</span></div>";
+          if (attachmentUrl && attachment.kind === "image") {
+            mediaMarkup = "<button type='button' class='spotlight-media' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><img alt='" + esc(attachment.name) + "' src='" + esc(attachmentUrl) + "' /></button>";
+          } else if (attachmentUrl && attachment.kind === "video") {
+            mediaMarkup = "<button type='button' class='spotlight-media' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><video preload='metadata' muted src='" + esc(attachmentUrl) + "'></video></button>";
+          } else if (attachment.kind === "audio") {
+            mediaMarkup = "<div class='spotlight-media'><div class='media-file-fallback'><strong>AUDIO</strong><span>" + esc(bytesLabel(attachment.sizeBytes)) + "</span></div></div>";
+          }
+          return "<article class='spotlight-card'>" +
+            "<div class='spotlight-card-head'>" +
+              "<div class='spotlight-card-copy'>" +
+                "<strong>" + esc(attachment.name) + "</strong>" +
+                "<p>" + esc((message.body || displayRoomDescription(room)).slice(0, 110)) + "</p>" +
+              "</div>" +
+              "<span class='ghost-pill'>" + esc(message.authorName || "alguem") + "</span>" +
+            "</div>" +
+            mediaMarkup +
+            "<div class='inline-row'>" +
+              "<span class='ghost-pill'>" + esc((attachment.kind || "arquivo") + " // " + formatRelative(message.createdAt)) + "</span>" +
+              "<button class='btn btn-ghost' type='button' data-action='jump-message' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Origem</button>" +
+            "</div>" +
+          "</article>";
+        }).join("") +
+      "</div>";
+  }
+
+  function renderMembersInsights() {
+    var wrap = q("members-insights");
+    var items = filteredPresenceItems();
+    var onlineCount;
+    var adminCount;
+    var vipCount;
+    var withStatusCount;
+    if (!wrap) {
+      return;
+    }
+    onlineCount = items.filter(function(item) { return item.online; }).length;
+    adminCount = items.filter(function(item) { return item.role === "admin" || item.role === "owner"; }).length;
+    vipCount = items.filter(function(item) { return item.role === "vip"; }).length;
+    withStatusCount = items.filter(function(item) { return !!personStatusCopy(item); }).length;
+    wrap.innerHTML =
+      "<article class='insight-card'><span>visiveis</span><strong>" + items.length + "</strong><p>membros no recorte atual</p></article>" +
+      "<article class='insight-card'><span>online</span><strong>" + onlineCount + "</strong><p>ativos agora na base</p></article>" +
+      "<article class='insight-card'><span>admin</span><strong>" + adminCount + "</strong><p>owner + admins no mapa</p></article>" +
+      "<article class='insight-card'><span>vip</span><strong>" + vipCount + "</strong><p>vip carregados no filtro</p></article>" +
+      "<article class='insight-card'><span>status</span><strong>" + withStatusCount + "</strong><p>com status customizado visivel</p></article>";
+  }
+
   function renderAppCenter() {
     if (!q("app-center-changelog-list")) {
       return;
@@ -1365,6 +1508,39 @@
       return "de boa";
     }
     return "silenciosa";
+  }
+
+  function notificationPermissionLabel() {
+    if (!window.Notification) {
+      return "Push indispon";
+    }
+    if (Notification.permission === "granted") {
+      return "Push on";
+    }
+    if (Notification.permission === "denied") {
+      return "Push negado";
+    }
+    return "Push off";
+  }
+
+  function syncBrowserNotifyButton() {
+    var button = q("btn-browser-notify");
+    if (!button) {
+      return;
+    }
+    button.textContent = notificationPermissionLabel();
+    button.disabled = !window.Notification;
+    button.classList.toggle("active", !!window.Notification && Notification.permission === "granted");
+  }
+
+  function directPeerAvatarMarkup(room) {
+    var peer = directPeerProfile(room);
+    var name = displayRoomName(room);
+    var avatarUrl = safeAvatarUrl(peer && peer.avatarUrl);
+    if (avatarUrl) {
+      return "<img class='direct-peer-avatar' alt='" + esc(name) + "' src='" + esc(avatarUrl) + "' />";
+    }
+    return "<div class='direct-peer-avatar'>" + esc(initials(name)) + "</div>";
   }
 
   function negoDashboardTip(room, mode) {
@@ -1828,12 +2004,36 @@
   }
 
   function requestNotificationsPermission() {
+    syncBrowserNotifyButton();
+  }
+
+  function handleBrowserNotifyToggle() {
     if (!window.Notification) {
+      toast("Teu navegador nao libera push por aqui.", "warn");
+      syncBrowserNotifyButton();
       return;
     }
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
+    if (Notification.permission === "granted") {
+      toast("Push do navegador ja esta ligado nesse device.", "ok");
+      syncBrowserNotifyButton();
+      return;
     }
+    if (Notification.permission === "denied") {
+      toast("O navegador travou as notificacoes. Libera nas permissoes do site.", "warn");
+      syncBrowserNotifyButton();
+      return;
+    }
+    Notification.requestPermission().then(function(permission) {
+      syncBrowserNotifyButton();
+      if (permission === "granted") {
+        toast("Push do navegador ligado. Agora o painel te cutuca.", "ok");
+        return;
+      }
+      toast("Push nao foi liberado. O painel segue no visual e no som.", "warn");
+    }).catch(function() {
+      syncBrowserNotifyButton();
+      toast("Nao consegui pedir permissao de push agora.", "err");
+    });
   }
 
   async function apiFetch(path, options) {
@@ -2081,6 +2281,8 @@
     renderPresenceSidebar();
     renderHeaderAndRoomState();
     renderDashboard();
+    renderDirectHubDeck();
+    renderRoomSpotlight();
     renderAppsLabDeck();
     renderSusPanel();
     renderPinnedStrip();
@@ -2120,6 +2322,7 @@
     q("btn-audio-toggle").textContent = state.audioEnabled ? "Som on" : "Som off";
     syncFocusModeUI();
     syncAppInstallStatus();
+    syncBrowserNotifyButton();
     renderConnectionStatus();
     q("overview-viewer-name").textContent = state.viewer.displayName || state.viewer.username;
     q("overview-viewer-copy").textContent = viewerStatusText || ((state.viewer.role || "member") + " // " + themeLabel(state.viewer.theme || "matrix"));
@@ -2229,6 +2432,7 @@
         "</div>";
       list.appendChild(button);
     });
+    renderDirectHubDeck();
   }
 
   function renderPresenceMini() {
@@ -2258,6 +2462,7 @@
     var items = filteredPresenceItems();
     var onlineVisible = items.filter(function(item) { return item.online; }).length;
     q("members-status-pill").textContent = onlineVisible + " online";
+    renderMembersInsights();
     list.innerHTML = "";
     if (!items.length) {
       if (summary) {
@@ -3432,6 +3637,7 @@
     var attachments = filteredRoomAttachments();
     var total = currentRoomAttachments().length;
     var summary = q("media-summary");
+    renderRoomSpotlight();
     q("media-search-input").value = state.mediaSearch;
     q("media-sort-select").value = state.mediaSort;
     Array.prototype.slice.call(document.querySelectorAll("[data-media-filter]")).forEach(function(item) {
@@ -4230,14 +4436,19 @@
 
   function renderProfileFormPreview() {
     var avatarWrap = q("profile-preview-avatar");
+    var banner = q("profile-preview-banner");
     var avatarUrl = safeAvatarUrl(q("profile-avatar").value.trim());
     var displayName = q("profile-display").value.trim() || (state.viewer && (state.viewer.displayName || state.viewer.username)) || "Painel Dief";
     var status = q("profile-status").value || "online";
     var statusText = q("profile-status-text").value.trim();
     var bio = q("profile-bio").value.trim();
     var theme = q("profile-theme").value || "matrix";
+    var accent = q("profile-accent").value || (state.viewer && state.viewer.accentColor) || themeAccent(theme);
     if (!avatarWrap) {
       return;
+    }
+    if (banner) {
+      banner.style.background = panelBannerStyle(theme, accent);
     }
     if (avatarUrl) {
       avatarWrap.innerHTML = "<img class='message-avatar profile-avatar-lg' alt='" + esc(displayName) + "' src='" + esc(avatarUrl) + "' />";
@@ -4273,6 +4484,7 @@
   function renderMemberProfile() {
     var profile = state.selectedMember;
     var avatarWrap = q("member-avatar");
+    var banner = q("member-banner");
     var actionDM = q("member-action-dm");
     var actionBlock = q("member-action-block");
     var actionMute = q("member-action-mute");
@@ -4307,6 +4519,9 @@
       : (profile.user.blockedByViewer
         ? "Tu bloqueou esse usuario."
         : (profile.user.mutedByViewer ? "Tu silenciou esse usuario." : "Sem bloqueio ou silencio ativo."));
+    if (banner) {
+      banner.style.background = panelBannerStyle(profile.user.theme || "matrix", profile.user.accentColor || themeAccent(profile.user.theme || "matrix"));
+    }
     var memberAvatarUrl = safeAvatarUrl(profile.user.avatarUrl);
     if (memberAvatarUrl) {
       avatarWrap.innerHTML = "<img class='message-avatar profile-avatar-lg' alt='" + esc(profile.user.displayName || profile.user.username) + "' src='" + esc(memberAvatarUrl) + "' />";
@@ -5595,6 +5810,7 @@
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-focus-mode").addEventListener("click", toggleFocusMode);
+    q("btn-browser-notify").addEventListener("click", handleBrowserNotifyToggle);
     if (q("btn-app-open")) {
       q("btn-app-open").addEventListener("click", function() {
         tryOpenUniversalD({ source: "apps-lab", fallbackToDownload: false });
