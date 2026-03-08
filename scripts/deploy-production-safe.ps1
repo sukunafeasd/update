@@ -43,38 +43,66 @@ function Wait-ProductionReady {
     Start-Sleep -Seconds 5
   } while ((Get-Date) -lt $deadline)
 
-  throw "Produção não ficou pronta dentro do tempo limite."
+  throw "Producao nao ficou pronta dentro do tempo limite."
 }
 
-Write-Host "[1/5] backup remoto"
+function Wait-RenderDeployLive {
+  param(
+    [string]$ServiceId,
+    [string]$DeployId,
+    [hashtable]$Headers,
+    [int]$TimeoutSec
+  )
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  do {
+    $deploy = Invoke-RestMethod -Method Get -Uri ("https://api.render.com/v1/services/" + $ServiceId + "/deploys/" + $DeployId) -Headers $Headers
+    $status = [string]$deploy.status
+    if ($status -eq "live") {
+      return
+    }
+    if ($status -in @("build_failed", "update_failed", "canceled")) {
+      throw ("Deploy do Render falhou com status: " + $status)
+    }
+    Start-Sleep -Seconds 5
+  } while ((Get-Date) -lt $deadline)
+
+  throw "Deploy do Render nao ficou live dentro do tempo limite."
+}
+
+Write-Host "[1/6] backup remoto"
 $backupPath = & powershell -ExecutionPolicy Bypass -File $backupScript -BaseUrl $BaseUrl -OpsToken $OpsToken
 if (-not (Test-Path $backupPath)) {
-  throw "Backup remoto não foi gerado."
+  throw "Backup remoto nao foi gerado."
 }
 
-Write-Host "[2/5] trigger deploy no Render"
+Write-Host "[2/6] trigger deploy no Render"
 $headers = @{
   Authorization = "Bearer $RenderApiKey"
   Accept = "application/json"
   "Content-Type" = "application/json"
 }
 $deployBody = @{ clearCache = "do_not_clear" } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri ("https://api.render.com/v1/services/" + $RenderServiceId + "/deploys") -Headers $headers -Body $deployBody | Out-Null
+$deploy = Invoke-RestMethod -Method Post -Uri ("https://api.render.com/v1/services/" + $RenderServiceId + "/deploys") -Headers $headers -Body $deployBody
+if ([string]::IsNullOrWhiteSpace([string]$deploy.id)) {
+  throw "Render nao devolveu id do deploy."
+}
 
-Write-Host "[3/5] aguardando produção voltar"
+Write-Host "[3/6] aguardando deploy ficar live"
+Wait-RenderDeployLive -ServiceId $RenderServiceId -DeployId ([string]$deploy.id) -Headers $headers -TimeoutSec $WaitTimeoutSec
+
+Write-Host "[4/6] aguardando producao responder"
 Wait-ProductionReady -HealthUrl ($BaseUrl.TrimEnd("/") + "/api/health") -ReadyUrl ($BaseUrl.TrimEnd("/") + "/api/ready") -TimeoutSec $WaitTimeoutSec
 
-Write-Host "[4/5] restaurando snapshot após deploy"
+Write-Host "[5/6] restaurando snapshot apos deploy"
 $opsHeaders = @{
   Authorization = "Bearer $OpsToken"
 }
 Invoke-RestMethod -Method Post -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/import") -Headers $opsHeaders -InFile $backupPath -ContentType "application/zip" | Out-Null
 
-Write-Host "[5/5] smoke final"
+Write-Host "[6/6] smoke final"
 if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
   $env:PAINEL_DIEF_OWNER_PASSWORD = $OwnerPassword
-}
-if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
   & powershell -ExecutionPolicy Bypass -File $smokeScript -BaseUrl $BaseUrl -Password $OwnerPassword -OpsToken $OpsToken -MutatingChecks
 } else {
   & powershell -ExecutionPolicy Bypass -File $smokeScript -BaseUrl $BaseUrl -OpsToken $OpsToken -MutatingChecks

@@ -102,10 +102,14 @@ func extractZipFile(file *zip.File, dest string) error {
 }
 
 func syncUploadsDir(source, target string) error {
-	if err := os.RemoveAll(strings.TrimSpace(target)); err != nil {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return fmt.Errorf("uploads target vazio")
+	}
+	if err := os.RemoveAll(target); err != nil {
 		return fmt.Errorf("reset current uploads: %w", err)
 	}
-	if err := os.MkdirAll(strings.TrimSpace(target), 0o755); err != nil {
+	if err := os.MkdirAll(target, 0o755); err != nil {
 		return fmt.Errorf("create uploads dir: %w", err)
 	}
 	if strings.TrimSpace(source) == "" {
