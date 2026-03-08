@@ -11,16 +11,12 @@
   };
   var ROOM_GROUP_ORDER = ["Diretas", "Chats", "Midia", "IA", "Lab", "VIP", "Admin", "Salas"];
   var PRIMARY_NAV = [
-    { id: "chat-geral", slug: "chat-geral", label: "Chat Geral", copy: "Conversa central da base.", icon: "GL" },
-    { id: "diretas", kind: "dm", label: "Diretas", copy: "Mensagens 1x1 do grupo.", icon: "DM" },
-    { id: "fotos", slug: "fotos", label: "Fotos", copy: "Galeria viva da tropa.", icon: "FT" },
-    { id: "arquivos", slug: "arquivos", label: "Arquivos", copy: "Documentos, zips e mídia salva.", icon: "AR" },
-    { id: "chat-priv", slug: "chat-priv", label: "Chat Priv", copy: "Sala reservada com senha.", icon: "PV" },
-    { id: "nego-dramias-ia", slug: "nego-dramias-ia", label: "Nego Dramias", copy: "IA útil, gaúcha e debochada.", icon: "IA" },
-    { id: "apps-lab", slug: "apps-lab", label: "Apps Lab", copy: "Terminal, snippets e testes.", icon: "LB" },
-    { id: "lounge-vip", slug: "lounge-vip", label: "Lounge VIP", copy: "Área premium e protegida.", icon: "VP" },
-    { id: "cofre-admin", slug: "cofre-admin", label: "Cofre Admin", copy: "Controle e moderação total.", icon: "AD" },
-    { id: "members", kind: "members", label: "Membros", copy: "Quem está online e pronto pra DM.", icon: "ON" }
+    { id: "chat-geral", slug: "chat-geral", label: "Chat Geral", copy: "Resenha aberta da base.", icon: "💬", theme: "canal base", accent: "ao vivo" },
+    { id: "diretas", kind: "dm", label: "Diretas", copy: "Conversa pv sem plateia.", icon: "📨", theme: "dm", accent: "1x1" },
+    { id: "fotos", slug: "fotos", label: "Fotos", copy: "Galeria viva da tropa.", icon: "🖼️", theme: "midia", accent: "prints" },
+    { id: "arquivos", slug: "arquivos", label: "Arquivos", copy: "Docs, packs e drop salvo.", icon: "📦", theme: "dropzone", accent: "asset" },
+    { id: "nego-dramias-ia", slug: "nego-dramias-ia", label: "Nego Dramias", copy: "IA útil, gaúcha e funcional.", icon: "🤠", theme: "assistente", accent: "ia" },
+    { id: "apps-lab", slug: "apps-lab", label: "Apps Lab", copy: "Sala técnica privada do admin.", icon: "🛠️", theme: "admin lab", accent: "restrito" }
   ];
   var LOGIN_ERROR_LINES = [
     "\uD83E\uDD23 Bah... essa senha veio torta.",
@@ -490,7 +486,7 @@
 
   function navIdForRoom(room) {
     if (!room) {
-      return "members";
+      return "chat-geral";
     }
     if (room.scope === "dm") {
       return "diretas";
@@ -508,6 +504,16 @@
 
   function isHubView() {
     return isMembersHub() || isDirectHubEmpty();
+  }
+
+  function navVisible(nav) {
+    if (!nav) {
+      return false;
+    }
+    if (nav.kind === "dm") {
+      return true;
+    }
+    return !!navRoom(nav);
   }
 
   function navSearchAllows(nav) {
@@ -808,9 +814,8 @@
     if (isAppsLabRoom(room)) {
       chips.push("build " + UNIVERSALD_META.shortVersion);
       chips.push(UNIVERSALD_META.sizeLabel);
-      chips.push("sha " + UNIVERSALD_META.sha256.slice(0, 10));
+      chips.push(activeRoomMembers().length + " admin na sala");
       chips.push(state.appInstalled ? "app ja visto nesse device" : "app ainda nao visto");
-      return chips;
     }
     chips.push(currentRoomMessages().length + " msgs visiveis");
     chips.push(attachments.length + " anexos");
@@ -1946,10 +1951,7 @@
     }
     if (hasPrimaryNavId(preferredNavId)) {
       preferredNav = navDefinition(preferredNavId);
-      if (preferredNav.id === "members") {
-        state.activeNavId = "members";
-        state.activeRoomId = 0;
-      } else if (preferredNav.id === "diretas" && !primaryDirectRoom()) {
+      if (preferredNav.id === "diretas" && !primaryDirectRoom()) {
         state.activeNavId = "diretas";
         state.activeRoomId = 0;
       } else if (navRoom(preferredNav)) {
@@ -2049,8 +2051,8 @@
       "<span class='room-kind kind-chat'>chat</span>" +
       "<span class='room-kind kind-dm'>dm</span>" +
       "<span class='room-kind kind-media'>midia</span>" +
-      "<span class='room-kind kind-secure'>segura</span>" +
-      "<span class='room-kind kind-admin'>membros</span>";
+      "<span class='room-kind kind-dev'>ia</span>" +
+      "<span class='room-kind kind-admin'>admin</span>";
   }
 
   function syncDocumentTitle() {
@@ -2066,10 +2068,12 @@
   function renderRooms() {
     var list = q("room-list");
     var totalUnread = 0;
-    var visible = sortNavItems(PRIMARY_NAV.filter(navSearchAllows));
+    var visible = sortNavItems(PRIMARY_NAV.filter(function(nav) {
+      return navVisible(nav) && navSearchAllows(nav);
+    }));
 
     list.innerHTML = "";
-    q("room-count").textContent = String(PRIMARY_NAV.length);
+    q("room-count").textContent = String(visible.length);
 
     state.rooms.forEach(function(room) {
       totalUnread += Number(state.unread[String(room.id)] || 0);
@@ -2077,7 +2081,7 @@
     q("stat-unread").textContent = String(totalUnread);
 
     if (!visible.length) {
-      list.innerHTML = "<div class='empty-state'>Nenhuma das 10 areas bateu com esse filtro.</div>";
+      list.innerHTML = "<div class='empty-state'>Nenhuma das " + PRIMARY_NAV.length + " areas bateu com esse filtro.</div>";
       return;
     }
 
@@ -2087,23 +2091,22 @@
       var unread = room ? Number(state.unread[String(room.id)] || 0) : 0;
       var badge = "";
       var button = document.createElement("button");
-      var kind = room ? roomKind(room) : (nav.kind === "members" ? "admin" : "chat");
-      var category = room ? (room.category || "") : (nav.kind || "members");
+      var kind = room ? roomKind(room) : (nav.kind === "dm" ? "dm" : "chat");
+      var category = room ? (room.category || "") : (nav.kind || "chat");
       var scope = room ? (room.scope || "public") : "hub";
       var title = room ? displayRoomName(room) : nav.label;
       var description = room ? (room.lastMessagePreview || displayRoomDescription(room)) : nav.copy;
       var subline = room
         ? (roomKindLabel(room) + " // " + description)
         : ("hub // " + nav.copy);
+      var accent = room ? roomPulseLabel(room) : (nav.accent || "base");
+      var theme = nav.theme || roomKindLabel(room);
       if (access === "locked") {
         badge = "<span class='badge badge-lock'>senha</span>";
       } else if (access === "vip") {
         badge = "<span class='badge badge-vip'>vip</span>";
       } else if (access === "admin") {
         badge = "<span class='badge badge-admin'>admin</span>";
-      }
-      if (nav.kind === "members") {
-        badge = "<span class='badge badge-live'>" + state.online.filter(function(item) { return item.online; }).length + " on</span>";
       }
       button.type = "button";
       button.className = "room-item" + (state.activeNavId === nav.id ? " active" : "");
@@ -2120,6 +2123,7 @@
             "<div class='room-title-copy'>" +
               "<strong>" + esc(title) + "</strong>" +
               "<span>" + esc(subline) + "</span>" +
+              "<div class='room-copy-badges'><span class='room-theme-pill'>" + esc(theme) + "</span><span class='room-theme-pill soft'>" + esc(accent) + "</span></div>" +
             "</div>" +
           "</div>" +
           "<div class='room-meta'>" + badge + (unread > 0 ? "<span class='unread-badge'>" + unread + "</span>" : "") + "</div>" +
@@ -2211,7 +2215,6 @@
   function renderHeaderAndRoomState() {
     var room = activeRoom();
     var access = accessForRoom(room);
-    var appsLabMode = !!(isAppsLabRoom(room) && access !== "locked" && access !== "vip");
     var peer = directPeerProfile(room);
     var stateCard = q("room-state");
     var btnAction = q("btn-room-action");
@@ -2224,10 +2227,10 @@
     btnRoomFavorite.textContent = isFavoriteNavId(state.activeNavId) ? "Area fixa" : "Fixar area";
     btnRoomFavorite.classList.toggle("active", isFavoriteNavId(state.activeNavId));
 
-    q("composer-form").classList.toggle("hidden", hubMode || appsLabMode);
-    q("conversation-panel").classList.toggle("apps-lab-mode", appsLabMode);
-    q("message-stream").classList.toggle("hidden", appsLabMode);
-    q("typing-indicator").classList.toggle("hidden", appsLabMode);
+    q("composer-form").classList.toggle("hidden", hubMode);
+    q("conversation-panel").classList.toggle("apps-lab-mode", !!isAppsLabRoom(room));
+    q("message-stream").classList.remove("hidden");
+    q("typing-indicator").classList.remove("hidden");
 
     if (isMembersHub()) {
       q("room-icon").textContent = "ON";
@@ -2296,16 +2299,11 @@
           ? "Corrige upload"
           : (state.editingMessage ? "Salvar" : "Enviar")));
 
-    if (appsLabMode) {
-      q("room-description").textContent = "Central dedicada ao UniversalD desktop. Aqui fica so o fluxo do app, sem conversa embolada no meio.";
-      q("overview-room-copy").textContent = "Area separada pra abrir, atualizar, baixar e acompanhar a build oficial.";
-      q("room-members-pill").textContent = "desktop";
+    if (isAppsLabRoom(room)) {
+      q("room-description").textContent = "Sala tecnica privada do admin para build, terminal, codigo e atualizacao do UniversalD.";
+      q("overview-room-copy").textContent = "Canal restrito do admin com chat, fluxo do app e painel tecnico.";
       q("room-type-badge").className = "badge kind-dev";
-      q("room-type-badge").textContent = "app";
-      q("room-access-badge").className = "badge badge-live";
-      q("room-access-badge").textContent = "central";
-      stateCard.classList.add("hidden");
-      return;
+      q("room-type-badge").textContent = "lab";
     }
 
     if (access === "dm") {
@@ -2393,20 +2391,12 @@
       quickline.innerHTML = "";
       return;
     }
-    if (isAppsLabRoom(room)) {
-      q("dashboard-last-activity").textContent = UNIVERSALD_META.shortVersion;
-      q("dashboard-room-files").textContent = UNIVERSALD_META.sizeLabel;
-      q("dashboard-room-mode").textContent = "central do app // release";
-      q("dashboard-nego-tip").textContent = "Bah, aqui o papo e app: abre, baixa e atualiza o UniversalD sem chat se atropelando.";
-      quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
-        return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
-      }).join("");
-      return;
-    }
     q("dashboard-last-activity").textContent = room.lastMessageAt ? formatDateTime(room.lastMessageAt) : "sem atividade";
     q("dashboard-room-files").textContent = String(attachments.length);
-    q("dashboard-room-mode").textContent = roomModeLabel(room, mode) + " // " + roomPulseLabel(room);
-    q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
+    q("dashboard-room-mode").textContent = isAppsLabRoom(room) ? "lab privado // admin" : (roomModeLabel(room, mode) + " // " + roomPulseLabel(room));
+    q("dashboard-nego-tip").textContent = isAppsLabRoom(room)
+      ? "Bah, aqui o papo eh tecnico: admins trocam build, terminal, codigo e update do UniversalD sem poluir o resto da base."
+      : negoDashboardTip(room, mode);
     quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
       return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
     }).join("");
@@ -2414,7 +2404,7 @@
 
   function renderAppsLabDeck() {
     var room = activeRoom();
-    var visible = !!(isAppsLabRoom(room) && accessForRoom(room) !== "locked" && accessForRoom(room) !== "vip");
+    var visible = !!(isAppsLabRoom(room) && accessForRoom(room) === "admin");
     var wrap = q("apps-lab-deck");
     if (!wrap) {
       return;
@@ -2735,7 +2725,7 @@
   function renderPinnedStrip() {
     var wrap = q("pins-strip");
     var items = currentRoomPins();
-    if (isHubView() || isAppsLabRoom(activeRoom()) || !items.length) {
+    if (isHubView() || !items.length) {
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
       return;
@@ -2921,11 +2911,6 @@
     var highlightNode = null;
     var onlineItems = state.online.filter(function(item) { return item.online; });
     stream.innerHTML = "";
-    if (isAppsLabRoom(room)) {
-      stream.classList.add("hidden");
-      renderTypingIndicator();
-      return;
-    }
     stream.classList.remove("hidden");
     if (isMembersHub() || isDirectHubEmpty()) {
       if (!onlineItems.length) {
@@ -3018,7 +3003,7 @@
 
   function renderTypingIndicator() {
     var wrap = q("typing-indicator");
-    if (isHubView() || isAppsLabRoom(activeRoom())) {
+    if (isHubView()) {
       wrap.classList.add("hidden");
       wrap.textContent = "";
       return;
@@ -3219,7 +3204,7 @@
   function renderUnreadBanner() {
     var wrap = q("unread-banner");
     var marker = state.latestUnreadByRoom[String(state.activeRoomId)];
-    if (isHubView() || isAppsLabRoom(activeRoom()) || !marker) {
+    if (isHubView() || !marker) {
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
       return;
@@ -3519,7 +3504,7 @@
     state.highlightMessageId = 0;
     saveStoredActiveNavId(state.activeNavId);
     nudgeConversation();
-    if (nav.kind === "members" || (nav.kind === "dm" && !room)) {
+    if (nav.kind === "dm" && !room) {
       state.activeRoomId = 0;
       saveStoredActiveRoomId(0);
       renderRooms();

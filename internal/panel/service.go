@@ -35,8 +35,6 @@ const (
 	defaultOwnerUsername = "dief"
 	defaultOwnerEmail    = "paineldief@local"
 	defaultOwnerPassword = "PainelDief#2026"
-	defaultPrivatePass   = "segredo123"
-	defaultVIPPass       = "vip2026"
 	sessionLifetime      = 7 * 24 * time.Hour
 	presenceWindow       = 45 * time.Second
 	passwordIterations   = 90000
@@ -1446,6 +1444,13 @@ func (s *Service) Search(viewer model.PanelUser, sessionID, query string, limit 
 }
 
 func (s *Service) AskAI(viewer model.PanelUser, prompt string) string {
+	if reply, err := s.askAIExternal(viewer, prompt); err == nil && strings.TrimSpace(reply) != "" {
+		return strings.TrimSpace(reply)
+	}
+	return s.askAIFallback(viewer, prompt)
+}
+
+func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
 	prompt = strings.TrimSpace(prompt)
 	lower := strings.ToLower(prompt)
 
@@ -1456,9 +1461,7 @@ func (s *Service) AskAI(viewer model.PanelUser, prompt string) string {
 	case strings.Contains(lower, "login") || strings.Contains(lower, "senha"):
 		return base + "tu entra com usuario ou email cadastrado pelo owner. Se errar a senha, o painel te gasta sem pena."
 	case strings.Contains(lower, "admin") || strings.Contains(lower, "owner"):
-		return base + "owner cadastra usuarios, admin governa sala oculta, logs, terminal e liberacao de acesso. O owner segue acima do resto."
-	case strings.Contains(lower, "vip"):
-		return base + "o lounge VIP fica reservado. Quem eh VIP, admin ou owner entra; o resto bate na porta."
+		return base + "owner cadastra usuarios, admin governa o Apps Lab, logs, terminal e liberacao de acesso. O owner segue acima do resto."
 	case strings.Contains(lower, "tema") || strings.Contains(lower, "matrix"):
 		return base + "cada perfil escolhe tema, cor, avatar e bio. Tem matrix, obsidian, ember, cobalt e neon pra deixar a cabine com mais personalidade."
 	case strings.Contains(lower, "fotos") || strings.Contains(lower, "arquivos") || strings.Contains(lower, "upload"):
@@ -1466,7 +1469,7 @@ func (s *Service) AskAI(viewer model.PanelUser, prompt string) string {
 	case strings.Contains(lower, "tempo real") || strings.Contains(lower, "online") || strings.Contains(lower, "typing"):
 		return base + "presenca, digitando, reacoes e atualizacao do chat rodam em tempo real pelo stream do servidor."
 	case strings.Contains(lower, "apps") || strings.Contains(lower, "terminal") || strings.Contains(lower, "codigo"):
-		return base + "no Apps Lab tu tem chat tecnico, painel de busca e terminal local. Mas terminal fica preso em admin e owner pra nao virar bagunca."
+		return base + "no Apps Lab tu tem um chat tecnico privado do admin, fluxo do UniversalD e terminal local. Mas terminal fica preso em admin e owner pra nao virar bagunca."
 	case strings.Contains(lower, "evento") || strings.Contains(lower, "agenda"):
 		return base + "na visao rapida tu encontra a agenda da base. Da pra criar evento, atrelar sala e confirmar presenca sem sair do painel."
 	case strings.Contains(lower, "enquete") || strings.Contains(lower, "poll"):
@@ -1478,8 +1481,95 @@ func (s *Service) AskAI(viewer model.PanelUser, prompt string) string {
 	case strings.Contains(lower, "reacao") || strings.Contains(lower, "emoji") || strings.Contains(lower, "fix") || strings.Contains(lower, "favorit") || strings.Contains(lower, "editar"):
 		return base + "agora da pra reagir, editar, apagar, fixar e favoritar mensagem. O chat ficou bem mais facil de organizar sem perder o fio."
 	default:
-		return base + "o Painel Dief virou uma central gamer com salas por categoria, busca, respostas, reacoes, fixados, favoritos, logs admin, uploads e perfil customizado. Se quiser, eu destrincho qualquer modulo."
+		return base + "o Painel Dief ficou enxuto e forte: chat geral, diretas, fotos, arquivos, IA e Apps Lab privado do admin. Se quiser, eu destrincho qualquer modulo."
 	}
+}
+
+func (s *Service) askAIExternal(viewer model.PanelUser, prompt string) (string, error) {
+	apiKey := strings.TrimSpace(os.Getenv("PAINEL_DIEF_AI_API_KEY"))
+	if apiKey == "" {
+		return "", errors.New("external ai key not configured")
+	}
+
+	baseURL := strings.TrimSpace(os.Getenv("PAINEL_DIEF_AI_BASE_URL"))
+	if baseURL == "" {
+		baseURL = "https://api.openai.com/v1"
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+	if !strings.HasSuffix(baseURL, "/chat/completions") {
+		baseURL += "/chat/completions"
+	}
+
+	modelName := strings.TrimSpace(os.Getenv("PAINEL_DIEF_AI_MODEL"))
+	if modelName == "" {
+		modelName = "gpt-4o-mini"
+	}
+
+	systemPrompt := strings.Join([]string{
+		"Tu és Nego Dramias, assistente oficial do Painel Dief.",
+		"Fala em português do Brasil com leve sotaque gaúcho e usa 'bah', 'tchê' ou 'vivente' com moderação.",
+		"Tu és útil, direto, engraçado e conhece o site atual: Chat Geral, Diretas, Fotos, Arquivos, Nego Dramias IA e Apps Lab privado de admin.",
+		"Explica recursos, orienta uso da plataforma, ajuda com organização da comunidade e responde sem inventar acesso que o usuário não tem.",
+		"Resposta curta, clara e prática. Evita textão desnecessário.",
+		fmt.Sprintf("Usuário atual: %s (%s).", strings.TrimSpace(viewer.DisplayName), strings.TrimSpace(viewer.Role)),
+	}, " ")
+
+	payload := map[string]any{
+		"model": modelName,
+		"messages": []map[string]string{
+			{"role": "system", "content": systemPrompt},
+			{"role": "user", "content": strings.TrimSpace(prompt)},
+		},
+		"temperature": 0.7,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, baseURL, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	if referer := strings.TrimSpace(os.Getenv("PAINEL_DIEF_AI_REFERER")); referer != "" {
+		req.Header.Set("HTTP-Referer", referer)
+	}
+	if title := strings.TrimSpace(os.Getenv("PAINEL_DIEF_AI_TITLE")); title != "" {
+		req.Header.Set("X-Title", title)
+	}
+
+	client := &http.Client{Timeout: 25 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("external ai returned %d: %s", resp.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	var decoded struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(responseBody, &decoded); err != nil {
+		return "", err
+	}
+	if len(decoded.Choices) == 0 {
+		return "", errors.New("external ai returned no choices")
+	}
+	return strings.TrimSpace(decoded.Choices[0].Message.Content), nil
 }
 
 func (s *Service) PostAIExchange(viewer model.PanelUser, sessionID string, roomID int64, prompt string) (model.PanelMessage, model.PanelMessage, error) {
@@ -1715,6 +1805,9 @@ func (s *Service) visibleRooms(user model.PanelUser, sessionID string) ([]model.
 	out := make([]model.PanelRoom, 0, len(rooms))
 	access := map[string]string{}
 	for _, room := range rooms {
+		if !isCorePanelRoom(room) {
+			continue
+		}
 		allowed, accessType, err := s.checkRoomAccess(user, sessionID, room)
 		if err != nil {
 			return nil, nil, err
@@ -2020,23 +2113,12 @@ func (s *Service) ensureAIUser(ownerID int64) (model.PanelUser, error) {
 }
 
 func (s *Service) ensureRooms() error {
-	privateHash, err := hashPassword(defaultPrivatePass)
-	if err != nil {
-		return err
-	}
-	vipHash, err := hashPassword(defaultVIPPass)
-	if err != nil {
-		return err
-	}
 	rooms := []model.PanelRoom{
-		{Slug: "chat-geral", Name: "Chat Geral", Description: "Canal principal da tropa.", Icon: "GL", Category: "chat", Scope: "public", SortOrder: 10},
-		{Slug: "fotos", Name: "Fotos", Description: "Prints, memes, setup e drops visuais.", Icon: "PX", Category: "media", Scope: "public", SortOrder: 20},
-		{Slug: "arquivos", Name: "Arquivos", Description: "Arquivos, packs, audios e docs.", Icon: "AR", Category: "media", Scope: "public", SortOrder: 30},
-		{Slug: "chat-priv", Name: "Chat Priv", Description: "Sala com senha para papo reservado.", Icon: "PR", Category: "chat", Scope: "public", SortOrder: 40, PasswordHash: privateHash},
-		{Slug: "nego-dramias-ia", Name: "Nego Dramias IA", Description: "Assistente do painel, sarcatico e gaucho.", Icon: "AI", Category: "ia", Scope: "public", SortOrder: 50},
-		{Slug: "apps-lab", Name: "Apps Lab", Description: "Sala tecnica para codigo, snippets e terminal.", Icon: "DEV", Category: "dev", Scope: "public", SortOrder: 60},
-		{Slug: "lounge-vip", Name: "Lounge VIP", Description: "Canal reservado para VIPs e admins.", Icon: "VIP", Category: "vip", Scope: "public", SortOrder: 70, VIPOnly: true, PasswordHash: vipHash},
-		{Slug: "cofre-admin", Name: "Cofre Admin", Description: "Sala oculta para moderacao e controle total.", Icon: "ADM", Category: "admin", Scope: "public", SortOrder: 80, AdminOnly: true},
+		{Slug: "chat-geral", Name: "Chat Geral", Description: "Resenha central da base, aberta pra tropa inteira.", Icon: "💬", Category: "chat", Scope: "public", SortOrder: 10},
+		{Slug: "fotos", Name: "Fotos", Description: "Prints, memes, setup e drops visuais com cara de galeria.", Icon: "🖼️", Category: "media", Scope: "public", SortOrder: 20},
+		{Slug: "arquivos", Name: "Arquivos", Description: "Docs, packs, audio e mídia pesada bem organizada.", Icon: "📦", Category: "media", Scope: "public", SortOrder: 30},
+		{Slug: "nego-dramias-ia", Name: "Nego Dramias IA", Description: "IA da base, útil, gaúcha e pronta pro serviço.", Icon: "🤠", Category: "ia", Scope: "public", SortOrder: 40},
+		{Slug: "apps-lab", Name: "Apps Lab", Description: "Sala técnica privada do admin pra app, código, terminal e update.", Icon: "🛠️", Category: "dev", Scope: "public", SortOrder: 50, AdminOnly: true},
 	}
 	for _, room := range rooms {
 		if _, err := s.store.UpsertPanelRoom(room); err != nil {
@@ -2070,11 +2152,11 @@ func (s *Service) ensureWelcomeMessages(owner, aiUser model.PanelUser) error {
 			msg.AuthorRole = "ai"
 			msg.Body = "Bah tche, me chama que eu te explico o painel, as salas, as permissoes e ate o terminal sem rodeio."
 			msg.IsAI = true
-		case "cofre-admin":
+		case "apps-lab":
 			msg.AuthorID = owner.ID
 			msg.AuthorName = owner.DisplayName
 			msg.AuthorRole = owner.Role
-			msg.Body = "Area oculta liberada. Aqui ficam logs, moderacao e as conversas que nao saem pra rua."
+			msg.Body = "Apps Lab na escuta. Aqui o admin resolve build, app, terminal e conversa tecnica sem baguncar a base."
 		default:
 			msg.AuthorID = owner.ID
 			msg.AuthorName = owner.DisplayName
@@ -2552,14 +2634,24 @@ func welcomeText(slug string) string {
 		return "Posta print, arte, setup ou meme. Se vier horroroso, pelo menos vem com estilo."
 	case "arquivos":
 		return "Area de drop local pra arquivos, docs e packs do servidor."
-	case "chat-priv":
-		return "Sala privada pronta. Quem nao tiver senha vai bater na porta e voltar triste."
+	case "nego-dramias-ia":
+		return "Bah tche, me chama aqui e eu te ajudo com a base, as salas e os trem do painel."
 	case "apps-lab":
-		return "Espaco tecnico pra apps, codigos, automacoes e testes no terminal."
-	case "lounge-vip":
-		return "Lounge VIP no ar. Aqui a conversa eh mais fina e o acesso eh seletivo."
+		return "Apps Lab liberado pros admins. Aqui fica o papo tecnico, o terminal e o fluxo do UniversalD."
 	default:
 		return "Sala pronta no Painel Dief."
+	}
+}
+
+func isCorePanelRoom(room model.PanelRoom) bool {
+	if room.Scope == "dm" {
+		return true
+	}
+	switch strings.TrimSpace(room.Slug) {
+	case "chat-geral", "fotos", "arquivos", "nego-dramias-ia", "apps-lab":
+		return true
+	default:
+		return false
 	}
 }
 

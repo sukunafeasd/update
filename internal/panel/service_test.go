@@ -569,6 +569,66 @@ func TestMessagePersistsAcrossLogoutAndLogin(t *testing.T) {
 	}
 }
 
+func TestBootstrapExposesOnlyCoreRoomsAndProtectsAppsLab(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "panel-core-rooms.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	svc := NewService(store, filepath.Join(t.TempDir(), "uploads"))
+	if err := svc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	owner, ownerSession, err := svc.Login(ownerUsername(), ownerPassword())
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+	member, err := svc.CreateUser(owner, "coremember", "coremember@paineldief.local", "Core#2026", "Core Member", "member")
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+	member, memberSession, err := svc.Login(member.Username, "Core#2026")
+	if err != nil {
+		t.Fatalf("login member: %v", err)
+	}
+
+	ownerBootstrap, err := svc.Bootstrap(owner, ownerSession.ID)
+	if err != nil {
+		t.Fatalf("bootstrap owner: %v", err)
+	}
+	memberBootstrap, err := svc.Bootstrap(member, memberSession.ID)
+	if err != nil {
+		t.Fatalf("bootstrap member: %v", err)
+	}
+
+	for _, legacySlug := range []string{"chat-priv", "lounge-vip", "cofre-admin"} {
+		if findRoomBySlug(ownerBootstrap.Rooms, legacySlug).ID != 0 {
+			t.Fatalf("legacy room %s should not be visible to owner", legacySlug)
+		}
+		if findRoomBySlug(memberBootstrap.Rooms, legacySlug).ID != 0 {
+			t.Fatalf("legacy room %s should not be visible to member", legacySlug)
+		}
+	}
+
+	for _, coreSlug := range []string{"chat-geral", "fotos", "arquivos", "nego-dramias-ia"} {
+		if findRoomBySlug(ownerBootstrap.Rooms, coreSlug).ID == 0 {
+			t.Fatalf("owner missing core room %s", coreSlug)
+		}
+		if findRoomBySlug(memberBootstrap.Rooms, coreSlug).ID == 0 {
+			t.Fatalf("member missing core room %s", coreSlug)
+		}
+	}
+
+	if findRoomBySlug(ownerBootstrap.Rooms, "apps-lab").ID == 0 {
+		t.Fatalf("owner should see apps-lab")
+	}
+	if findRoomBySlug(memberBootstrap.Rooms, "apps-lab").ID != 0 {
+		t.Fatalf("member should not see apps-lab")
+	}
+}
+
 func TestPanelPollCreateAndVoteFlow(t *testing.T) {
 	store, err := db.Open(filepath.Join(t.TempDir(), "panel-polls.db"))
 	if err != nil {
