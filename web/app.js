@@ -238,6 +238,10 @@
     return roomById(state.activeRoomId);
   }
 
+  function isAppsLabRoom(room) {
+    return !!(room && room.slug === "apps-lab");
+  }
+
   function presenceByUserId(userId) {
     var i;
     for (i = 0; i < state.online.length; i++) {
@@ -2063,6 +2067,7 @@
   function renderHeaderAndRoomState() {
     var room = activeRoom();
     var access = accessForRoom(room);
+    var appsLabMode = !!(isAppsLabRoom(room) && access !== "locked" && access !== "vip");
     var peer = directPeerProfile(room);
     var stateCard = q("room-state");
     var btnAction = q("btn-room-action");
@@ -2075,7 +2080,10 @@
     btnRoomFavorite.textContent = isFavoriteNavId(state.activeNavId) ? "Area fixa" : "Fixar area";
     btnRoomFavorite.classList.toggle("active", isFavoriteNavId(state.activeNavId));
 
-    q("composer-form").classList.toggle("hidden", hubMode);
+    q("composer-form").classList.toggle("hidden", hubMode || appsLabMode);
+    q("conversation-panel").classList.toggle("apps-lab-mode", appsLabMode);
+    q("message-stream").classList.toggle("hidden", appsLabMode);
+    q("typing-indicator").classList.toggle("hidden", appsLabMode);
 
     if (isMembersHub()) {
       q("room-icon").textContent = "ON";
@@ -2143,6 +2151,18 @@
         : (hasErroredPendingUploads()
           ? "Corrige upload"
           : (state.editingMessage ? "Salvar" : "Enviar")));
+
+    if (appsLabMode) {
+      q("room-description").textContent = "Central dedicada ao UniversalD desktop. Aqui fica so o fluxo do app, sem conversa embolada no meio.";
+      q("overview-room-copy").textContent = "Area separada pra abrir, atualizar, baixar e acompanhar a build oficial.";
+      q("room-members-pill").textContent = "desktop";
+      q("room-type-badge").className = "badge kind-dev";
+      q("room-type-badge").textContent = "app";
+      q("room-access-badge").className = "badge badge-live";
+      q("room-access-badge").textContent = "central";
+      stateCard.classList.add("hidden");
+      return;
+    }
 
     if (access === "dm") {
       q("room-access-badge").className = "badge kind-dm";
@@ -2221,6 +2241,13 @@
       q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
       return;
     }
+    if (isAppsLabRoom(room)) {
+      q("dashboard-last-activity").textContent = UNIVERSALD_META.shortVersion;
+      q("dashboard-room-files").textContent = UNIVERSALD_META.sizeLabel;
+      q("dashboard-room-mode").textContent = "central do app // release";
+      q("dashboard-nego-tip").textContent = "Bah, aqui o papo e app: abre, baixa e atualiza o UniversalD sem chat se atropelando.";
+      return;
+    }
     q("dashboard-last-activity").textContent = room.lastMessageAt ? formatDateTime(room.lastMessageAt) : "sem atividade";
     q("dashboard-room-files").textContent = String(attachments.length);
     q("dashboard-room-mode").textContent = roomModeLabel(room, mode) + " // " + roomPulseLabel(room);
@@ -2229,7 +2256,7 @@
 
   function renderAppsLabDeck() {
     var room = activeRoom();
-    var visible = !!(room && room.slug === "apps-lab" && accessForRoom(room) !== "locked" && accessForRoom(room) !== "vip");
+    var visible = !!(isAppsLabRoom(room) && accessForRoom(room) !== "locked" && accessForRoom(room) !== "vip");
     var wrap = q("apps-lab-deck");
     if (!wrap) {
       return;
@@ -2238,9 +2265,10 @@
     if (!visible) {
       return;
     }
-    q("apps-password-size").textContent = String(q("apps-password-length").value || 18) + " chars";
-    q("apps-notes-input").value = state.appsNotesDraft || "";
-    q("apps-notes-status").textContent = q("apps-notes-input").value.trim() ? "salvo local" : "vazio";
+    q("apps-app-version-pill").textContent = UNIVERSALD_META.shortVersion;
+    q("apps-build-copy").textContent = UNIVERSALD_META.version;
+    q("apps-size-copy").textContent = UNIVERSALD_META.sizeLabel;
+    q("apps-sha-copy").textContent = UNIVERSALD_META.sha256.slice(0, 12) + "...";
   }
 
   function renderPendingAttachment() {
@@ -2549,7 +2577,7 @@
   function renderPinnedStrip() {
     var wrap = q("pins-strip");
     var items = currentRoomPins();
-    if (isHubView() || !items.length) {
+    if (isHubView() || isAppsLabRoom(activeRoom()) || !items.length) {
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
       return;
@@ -2735,6 +2763,12 @@
     var highlightNode = null;
     var onlineItems = state.online.filter(function(item) { return item.online; });
     stream.innerHTML = "";
+    if (isAppsLabRoom(room)) {
+      stream.classList.add("hidden");
+      renderTypingIndicator();
+      return;
+    }
+    stream.classList.remove("hidden");
     if (isMembersHub() || isDirectHubEmpty()) {
       if (!onlineItems.length) {
         stream.innerHTML = "<div class='empty-state'>Ninguem esta online agora. Quando o grupo voltar, esse hub enche sozinho.</div>";
@@ -2826,7 +2860,7 @@
 
   function renderTypingIndicator() {
     var wrap = q("typing-indicator");
-    if (isHubView()) {
+    if (isHubView() || isAppsLabRoom(activeRoom())) {
       wrap.classList.add("hidden");
       wrap.textContent = "";
       return;
@@ -3027,7 +3061,7 @@
   function renderUnreadBanner() {
     var wrap = q("unread-banner");
     var marker = state.latestUnreadByRoom[String(state.activeRoomId)];
-    if (isHubView() || !marker) {
+    if (isHubView() || isAppsLabRoom(activeRoom()) || !marker) {
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
       return;
@@ -4810,11 +4844,17 @@
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-focus-mode").addEventListener("click", toggleFocusMode);
-    q("btn-app-open").addEventListener("click", function() {
-      tryOpenUniversalD({ source: "apps-lab", fallbackToDownload: false });
-    });
-    q("btn-app-download").addEventListener("click", triggerUniversalDDownload);
-    q("btn-app-guide").addEventListener("click", openAppCenterModal);
+    if (q("btn-app-open")) {
+      q("btn-app-open").addEventListener("click", function() {
+        tryOpenUniversalD({ source: "apps-lab", fallbackToDownload: false });
+      });
+    }
+    if (q("btn-app-download")) {
+      q("btn-app-download").addEventListener("click", triggerUniversalDDownload);
+    }
+    if (q("btn-app-guide")) {
+      q("btn-app-guide").addEventListener("click", openAppCenterModal);
+    }
     q("btn-app-center-open").addEventListener("click", function() {
       tryOpenUniversalD({ source: "app-center", fallbackToDownload: true });
     });
@@ -4908,25 +4948,6 @@
       uploadSelectedFile(q("avatar-upload-input"), function(attachment) {
         q("profile-avatar").value = safeAttachmentUrl(attachment.url);
       });
-    });
-    q("apps-password-length").addEventListener("input", function() {
-      q("apps-password-size").textContent = String(q("apps-password-length").value || 18) + " chars";
-    });
-    q("btn-generate-password").addEventListener("click", handleGeneratePassword);
-    q("btn-copy-password").addEventListener("click", function() {
-      copyText(q("apps-password-output").value || "", "Senha copiada.", "Nao consegui copiar essa senha.");
-    });
-    q("apps-notes-input").addEventListener("input", function(event) {
-      state.appsNotesDraft = event.target.value || "";
-      q("apps-notes-status").textContent = state.appsNotesDraft.trim() ? "rascunho" : "vazio";
-    });
-    q("btn-save-notes").addEventListener("click", handleSaveAppsNotes);
-    q("btn-clear-notes").addEventListener("click", function() {
-      state.appsNotesDraft = "";
-      q("apps-notes-input").value = "";
-      var saved = saveAppsNotes("");
-      refreshAppsNotesState(saved);
-      toast(saved ? "Notas limpas do Apps Lab." : "Nao consegui limpar as notas locais.", saved ? "ok" : "err");
     });
     q("create-user-form").addEventListener("submit", handleCreateUser);
     q("event-form").addEventListener("submit", handleEventCreate);

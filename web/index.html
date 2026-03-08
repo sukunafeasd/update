@@ -196,10 +196,11 @@
                   <h4>UniversalD desktop</h4>
                   <span id="apps-app-status-pill" class="ghost-pill">app nao detectado</span>
                 </div>
-                <p class="utility-copy">Baixa ou atualiza o app oficial do Painel Dief pra usar fora do navegador com a mesma identidade da base.</p>
+                <p class="utility-copy">Central dedicada ao app oficial do Painel Dief. Abre, atualiza, baixa e acompanha a build sem misturar isso com o chat.</p>
                 <div class="inline-row">
                   <span class="ghost-pill">Windows app oficial</span>
                   <span class="ghost-pill">protocolo nativo</span>
+                  <span id="apps-app-version-pill" class="ghost-pill">v3.1.3</span>
                 </div>
                 <div class="inline-row">
                   <button id="btn-app-open" class="btn btn-ghost" type="button">Abrir agora</button>
@@ -210,32 +211,34 @@
 
               <article class="utility-card">
                 <div class="utility-head">
-                  <h4>Gerador rapido</h4>
-                  <span class="ghost-pill">apps lab</span>
+                  <h4>Build instalada</h4>
+                  <span class="ghost-pill">release</span>
                 </div>
-                <p class="utility-copy">Senha forte sem sair do painel. Boa pra sala, app ou teste.</p>
+                <p class="utility-copy">Resumo da build oficial sincronizada com o download privado da base.</p>
                 <div class="inline-row">
-                  <label for="apps-password-length">Tamanho</label>
-                  <input id="apps-password-length" type="range" min="10" max="32" step="1" value="18" />
-                  <span id="apps-password-size" class="ghost-pill">18 chars</span>
+                  <span class="ghost-pill">build</span>
+                  <strong id="apps-build-copy">3.1.3-desktop-native</strong>
                 </div>
-                <input id="apps-password-output" type="text" readonly placeholder="Clica em gerar e o painel cospe uma senha forte." />
                 <div class="inline-row">
-                  <button id="btn-generate-password" class="btn btn-primary" type="button">Gerar senha</button>
-                  <button id="btn-copy-password" class="btn btn-ghost" type="button">Copiar</button>
+                  <span class="ghost-pill">pacote</span>
+                  <strong id="apps-size-copy">16.13 MB</strong>
+                </div>
+                <div class="inline-row">
+                  <span class="ghost-pill">sha</span>
+                  <code id="apps-sha-copy">DB156B2648BA...</code>
                 </div>
               </article>
 
               <article class="utility-card">
                 <div class="utility-head">
-                  <h4>Bloco de notas local</h4>
-                  <span id="apps-notes-status" class="ghost-pill">salvo local</span>
+                  <h4>Guia rapido do app</h4>
+                  <span class="ghost-pill">fluxo limpo</span>
                 </div>
-                <p class="utility-copy">Rascunha comando, ideia, snippet ou recado sem poluir o chat.</p>
-                <textarea id="apps-notes-input" rows="7" placeholder="Joga aqui teus lembretes do Apps Lab..."></textarea>
+                <p class="utility-copy">1. Abre o app se ele ja estiver instalado. 2. Se nao abrir, baixa a build privada. 3. Depois usa o protocolo `universald://` direto do site.</p>
                 <div class="inline-row">
-                  <button id="btn-save-notes" class="btn btn-ghost" type="button">Salvar nota</button>
-                  <button id="btn-clear-notes" class="btn btn-ghost" type="button">Limpar</button>
+                  <span class="ghost-pill">login espelhado</span>
+                  <span class="ghost-pill">download privado</span>
+                  <span class="ghost-pill">atalho nativo</span>
                 </div>
               </article>
             </section>

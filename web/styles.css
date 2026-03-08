@@ -1189,6 +1189,15 @@ body.sidebar-collapsed #channel-panel {
   overflow: hidden;
 }
 
+#conversation-panel.apps-lab-mode {
+  grid-template-rows: auto auto;
+  align-content: start;
+}
+
+#conversation-panel.apps-lab-mode .apps-lab-deck {
+  grid-template-columns: 1fr;
+}
+
 body.focus-mode #workspace-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -1305,6 +1314,17 @@ body.focus-mode #btn-sidebar-open {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
+}
+
+.apps-lab-deck code {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
 }
 
 .utility-copy {

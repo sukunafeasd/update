@@ -75,6 +75,7 @@ if ($BaseUrl -like "http://127.0.0.1:*" -or $BaseUrl -like "http://localhost:*" 
 
 if ($MutatingChecks) {
   $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  $originalViewer = $bootstrap.viewer
 
   $messageResp = Invoke-RestMethod -Uri "$BaseUrl/api/panel/messages" -Method Post -WebSession $session -ContentType "application/json" -Body (@{
     roomId = [int64]$room.id
@@ -142,6 +143,45 @@ if ($MutatingChecks) {
     eventId = [int64]$eventResp.event.id
   } | ConvertTo-Json)
   $result.eventDelete = [bool]($eventDeleteResp.eventId -eq [int64]$eventResp.event.id)
+
+  $profileStamp = "smoke-status-$stamp"
+  Invoke-RestMethod -Uri "$BaseUrl/api/panel/profile" -Method Post -WebSession $session -ContentType "application/json" -Body (@{
+    displayName = [string]$originalViewer.displayName
+    bio = [string]$originalViewer.bio
+    theme = [string]$originalViewer.theme
+    accentColor = [string]$originalViewer.accentColor
+    avatarUrl = [string]$originalViewer.avatarUrl
+    status = [string]$originalViewer.status
+    statusText = $profileStamp
+  } | ConvertTo-Json) | Out-Null
+
+  $session2 = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+  $loginResp2 = Invoke-RestMethod -Uri "$BaseUrl/api/panel/login" -Method Post -WebSession $session2 -ContentType "application/json" -Body $loginBody
+  $result.profilePersist = [bool]($loginResp2.bootstrap.viewer.statusText -eq $profileStamp)
+
+  $userName = "smoke" + $stamp
+  $createUserResp = Invoke-RestMethod -Uri "$BaseUrl/api/panel/users" -Method Post -WebSession $session2 -ContentType "application/json" -Body (@{
+    username = $userName
+    displayName = "Smoke " + $stamp
+    email = "$userName@local.test"
+    password = "Senha#123456"
+    role = "member"
+  } | ConvertTo-Json)
+
+  $session3 = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+  Invoke-RestMethod -Uri "$BaseUrl/api/panel/login" -Method Post -WebSession $session3 -ContentType "application/json" -Body $loginBody | Out-Null
+  $profileCheck = Invoke-RestMethod -Uri "$BaseUrl/api/panel/social/profile?userId=$($createUserResp.user.id)" -WebSession $session3 -UseBasicParsing
+  $result.userPersist = [bool]($profileCheck.profile.user.userId -eq $createUserResp.user.id)
+
+  Invoke-RestMethod -Uri "$BaseUrl/api/panel/profile" -Method Post -WebSession $session3 -ContentType "application/json" -Body (@{
+    displayName = [string]$originalViewer.displayName
+    bio = [string]$originalViewer.bio
+    theme = [string]$originalViewer.theme
+    accentColor = [string]$originalViewer.accentColor
+    avatarUrl = [string]$originalViewer.avatarUrl
+    status = [string]$originalViewer.status
+    statusText = [string]$originalViewer.statusText
+  } | ConvertTo-Json) | Out-Null
 }
 
 $result.GetEnumerator() | ForEach-Object {
