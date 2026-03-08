@@ -567,7 +567,7 @@ func normalizeAppEnv(value string) string {
 }
 
 func (s *Server) authorizeOpsRequest(r *http.Request) bool {
-	if isLoopbackRequest(r) {
+	if normalizeAppEnv(s.appEnv) != "production" && isLoopbackRequest(r) {
 		return true
 	}
 	token := strings.TrimSpace(s.opsToken)

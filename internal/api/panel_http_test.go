@@ -21,6 +21,7 @@ import (
 
 func TestPanelHTTPLifecycle(t *testing.T) {
 	root := t.TempDir()
+	t.Setenv("PAINEL_DIEF_OWNER_PASSWORD", "TesteOwner#2026")
 
 	store, err := db.Open(filepath.Join(root, "panel-http.db"))
 	if err != nil {
@@ -79,7 +80,7 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 
 	login := mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
 		"login":    "dief",
-		"password": "valorant",
+		"password": "TesteOwner#2026",
 	}, nil, http.StatusOK)
 	if login["ok"] != true {
 		t.Fatalf("expected login ok, got %#v", login["ok"])
@@ -290,6 +291,7 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 
 func TestPanelHTTPJoinRequestAndOwnerModerationFlow(t *testing.T) {
 	root := t.TempDir()
+	t.Setenv("PAINEL_DIEF_OWNER_PASSWORD", "TesteOwner#2026")
 
 	store, err := db.Open(filepath.Join(root, "panel-http-membership.db"))
 	if err != nil {
@@ -327,6 +329,26 @@ func TestPanelHTTPJoinRequestAndOwnerModerationFlow(t *testing.T) {
 	requestMap := asMap(t, join["request"])
 	requestID := asInt64(t, requestMap["id"])
 
+	guestRoleDenied := mustRequestJSON(t, guestClient, http.MethodPost, ts.URL+"/api/panel/users/role", map[string]any{
+		"targetUserId": 999,
+		"role":         "vip",
+	}, nil, http.StatusUnauthorized)
+	if !strings.Contains(strings.ToLower(asString(t, guestRoleDenied["error"])), "login") {
+		t.Fatalf("expected login requirement for anonymous role update, got %#v", guestRoleDenied["error"])
+	}
+
+	guestExpelDenied := mustRequestJSON(t, guestClient, http.MethodPost, ts.URL+"/api/panel/users/expel", map[string]any{
+		"targetUserId": 999,
+	}, nil, http.StatusUnauthorized)
+	if !strings.Contains(strings.ToLower(asString(t, guestExpelDenied["error"])), "login") {
+		t.Fatalf("expected login requirement for anonymous expel, got %#v", guestExpelDenied["error"])
+	}
+
+	guestRequestsDenied := mustRequestJSON(t, guestClient, http.MethodGet, ts.URL+"/api/panel/join-requests", nil, nil, http.StatusUnauthorized)
+	if !strings.Contains(strings.ToLower(asString(t, guestRequestsDenied["error"])), "login") {
+		t.Fatalf("expected login requirement for anonymous join request list, got %#v", guestRequestsDenied["error"])
+	}
+
 	ownerJar, err := cookiejar.New(nil)
 	if err != nil {
 		t.Fatalf("cookie jar: %v", err)
@@ -336,7 +358,7 @@ func TestPanelHTTPJoinRequestAndOwnerModerationFlow(t *testing.T) {
 
 	mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
 		"login":    "dief",
-		"password": "valorant",
+		"password": "TesteOwner#2026",
 	}, nil, http.StatusOK)
 
 	requests := mustRequestJSON(t, ownerClient, http.MethodGet, ts.URL+"/api/panel/join-requests", nil, nil, http.StatusOK)
@@ -377,6 +399,20 @@ func TestPanelHTTPJoinRequestAndOwnerModerationFlow(t *testing.T) {
 		"password": "Pedido#2026",
 	}, nil, http.StatusOK)
 
+	memberRequestsDenied := mustRequestJSON(t, memberClient, http.MethodGet, ts.URL+"/api/panel/join-requests", nil, nil, http.StatusForbidden)
+	if !strings.Contains(strings.ToLower(asString(t, memberRequestsDenied["error"])), "dono") {
+		t.Fatalf("expected owner-only join queue error, got %#v", memberRequestsDenied["error"])
+	}
+
+	memberReviewDenied := mustRequestJSON(t, memberClient, http.MethodPost, ts.URL+"/api/panel/join-requests/review", map[string]any{
+		"requestId":  requestID,
+		"approve":    false,
+		"reviewNote": "nao pode",
+	}, nil, http.StatusForbidden)
+	if !strings.Contains(strings.ToLower(asString(t, memberReviewDenied["error"])), "dono") {
+		t.Fatalf("expected owner-only review error, got %#v", memberReviewDenied["error"])
+	}
+
 	roleDenied := mustRequestJSON(t, memberClient, http.MethodPost, ts.URL+"/api/panel/users/role", map[string]any{
 		"targetUserId": targetUserID,
 		"role":         "vip",
@@ -387,7 +423,7 @@ func TestPanelHTTPJoinRequestAndOwnerModerationFlow(t *testing.T) {
 
 	mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/login", map[string]any{
 		"login":    "dief",
-		"password": "valorant",
+		"password": "TesteOwner#2026",
 	}, nil, http.StatusOK)
 
 	roleUpdated := mustRequestJSON(t, ownerClient, http.MethodPost, ts.URL+"/api/panel/users/role", map[string]any{

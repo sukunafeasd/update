@@ -704,7 +704,7 @@ func TestBootstrapExposesOnlyCoreRoomsAndProtectsAppsLab(t *testing.T) {
 	if coisasRoom.ID == 0 {
 		t.Fatalf("member missing coisas room")
 	}
-	if err := svc.UnlockRoom(member, memberSession.ID, coisasRoom.ID, "batata"); err != nil {
+	if err := svc.UnlockRoom(member, memberSession.ID, coisasRoom.ID, coisasPassword()); err != nil {
 		t.Fatalf("unlock coisas room: %v", err)
 	}
 	if messages, _, err := svc.ListMessages(member, memberSession.ID, coisasRoom.ID, 10); err != nil {
@@ -802,7 +802,7 @@ func TestEnsureBootstrappedRotatesOwnerPasswordToConfiguredSecret(t *testing.T) 
 	}
 	defer store.Close()
 
-	oldHash, err := hashPassword("PainelDief#2026")
+	oldHash, err := hashPassword("SenhaAntiga#2026")
 	if err != nil {
 		t.Fatalf("hash old owner password: %v", err)
 	}
@@ -826,7 +826,7 @@ func TestEnsureBootstrappedRotatesOwnerPasswordToConfiguredSecret(t *testing.T) 
 	if _, _, err := svc.Login(ownerUsername(), ownerPassword()); err != nil {
 		t.Fatalf("expected configured owner password to work, got %v", err)
 	}
-	if _, _, err := svc.Login(ownerUsername(), "PainelDief#2026"); err == nil {
+	if _, _, err := svc.Login(ownerUsername(), "SenhaAntiga#2026"); err == nil {
 		t.Fatalf("expected legacy owner password to be rejected after rotation")
 	}
 }

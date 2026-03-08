@@ -26,6 +26,10 @@ services:
         value: "60"
       - key: UNIVERSALD_OPS_TOKEN
         generateValue: true
+      - key: PAINEL_DIEF_OWNER_PASSWORD
+        sync: false
+      - key: PAINEL_DIEF_COISAS_PASSWORD
+        sync: false
       - key: UNIVERSALD_OPEN
         value: "false"
       - key: UNIVERSALD_SAFE_MODE

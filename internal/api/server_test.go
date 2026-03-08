@@ -177,6 +177,64 @@ func TestOpsSummaryRequiresTokenOutsideLoopback(t *testing.T) {
 	}
 }
 
+func TestOpsSummaryRequiresTokenInProductionEvenOnLoopback(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-ops-production-loopback.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "production",
+		DBPath:   filepath.Join(root, "server-ops-production-loopback.db"),
+		OpsToken: "ops-secret",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/ops/summary", nil)
+	req.RemoteAddr = "127.0.0.1:443"
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 without token on production loopback, got %d", w.Code)
+	}
+}
+
+func TestOpsSummaryAllowsLoopbackInNonProduction(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-ops-staging-loopback.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "staging",
+		DBPath:   filepath.Join(root, "server-ops-staging-loopback.db"),
+		OpsToken: "ops-secret",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/ops/summary", nil)
+	req.RemoteAddr = "127.0.0.1:443"
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for staging loopback ops summary, got %d", w.Code)
+	}
+}
+
 func TestOpsSummaryAcceptsBearerToken(t *testing.T) {
 	root := t.TempDir()
 	store, err := db.Open(filepath.Join(root, "server-ops.db"))
@@ -329,6 +387,7 @@ func TestEmbeddedDownloadRouteRequiresAccess(t *testing.T) {
 
 func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
 	root := t.TempDir()
+	t.Setenv("PAINEL_DIEF_OWNER_PASSWORD", "TesteOwner#2026")
 	store, err := db.Open(filepath.Join(root, "server-import.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)
@@ -355,7 +414,7 @@ func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
 		t.Fatalf("expected export 200, got %d", exportRec.Code)
 	}
 
-	owner, _, err := panelSvc.Login("dief", "valorant")
+	owner, _, err := panelSvc.Login("dief", "TesteOwner#2026")
 	if err != nil {
 		t.Fatalf("login owner: %v", err)
 	}

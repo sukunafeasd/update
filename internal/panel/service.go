@@ -32,22 +32,23 @@ import (
 )
 
 const (
-	defaultOwnerUsername = "dief"
-	defaultOwnerEmail    = "paineldief@local"
-	defaultOwnerPassword = "valorant"
-	sessionLifetime      = 7 * 24 * time.Hour
-	presenceWindow       = 45 * time.Second
-	passwordIterations   = 90000
-	typingTTL            = 7 * time.Second
-	floodWindow          = 12 * time.Second
-	floodBurst           = 6
-	loginWindow          = 90 * time.Second
-	loginBurst           = 5
-	loginCooldown        = 45 * time.Second
-	recentLogLimit       = 14
-	defaultUploadLimit   = 30 << 20
-	vipUploadLimit       = 60 << 20
-	adminUploadLimit     = 120 << 20
+	defaultOwnerUsername  = "dief"
+	defaultOwnerEmail     = "paineldief@local"
+	defaultOwnerPassword  = "PainelDiefLocal#TrocaEssaSenha"
+	defaultCoisasPassword = "CoisasLocal#TrocaEssaSenha"
+	sessionLifetime       = 7 * 24 * time.Hour
+	presenceWindow        = 45 * time.Second
+	passwordIterations    = 90000
+	typingTTL             = 7 * time.Second
+	floodWindow           = 12 * time.Second
+	floodBurst            = 6
+	loginWindow           = 90 * time.Second
+	loginBurst            = 5
+	loginCooldown         = 45 * time.Second
+	recentLogLimit        = 14
+	defaultUploadLimit    = 30 << 20
+	vipUploadLimit        = 60 << 20
+	adminUploadLimit      = 120 << 20
 )
 
 var ErrLoginRateLimited = errors.New("login temporariamente bloqueado")
@@ -1466,7 +1467,7 @@ func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
 		return base + "tu entra com usuario ou email cadastrado pelo owner. Se errar a senha, o painel te gasta sem pena e sem choro."
 	case strings.Contains(lower, "admin") || strings.Contains(lower, "owner"):
 		return base + "owner cadastra usuarios, admin governa o Apps Lab, logs, terminal e liberacao de acesso. O owner segue acima do resto."
-	case strings.Contains(lower, "coisas") || strings.Contains(lower, "batata"):
+	case strings.Contains(lower, "coisas"):
 		return base + "tem a sala Coisas, um canto fechado por senha pra papo reservado. Quem nao eh admin precisa destrancar antes de entrar."
 	case strings.Contains(lower, "tema") || strings.Contains(lower, "matrix"):
 		return base + "cada perfil escolhe tema, cor, avatar e bio. Tem matrix, obsidian, ember, cobalt e neon pra deixar a cabine com mais personalidade."
@@ -2210,7 +2211,7 @@ func (s *Service) ensureAIUser(ownerID int64) (model.PanelUser, error) {
 }
 
 func (s *Service) ensureRooms() error {
-	coisasHash, err := hashPassword("batata")
+	coisasHash, err := hashPassword(coisasPassword())
 	if err != nil {
 		return err
 	}
@@ -2719,6 +2720,10 @@ func ownerEmail() string {
 
 func ownerPassword() string {
 	return strings.TrimSpace(envOr("PAINEL_DIEF_OWNER_PASSWORD", defaultOwnerPassword))
+}
+
+func coisasPassword() string {
+	return strings.TrimSpace(envOr("PAINEL_DIEF_COISAS_PASSWORD", defaultCoisasPassword))
 }
 
 func envOr(key, fallback string) string {

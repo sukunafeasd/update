@@ -1,12 +1,19 @@
 param(
   [string]$BaseUrl = "http://127.0.0.1:7788",
   [string]$Login = "dief",
-  [string]$Password = "valorant",
+  [string]$Password = "",
   [string]$OpsToken = "",
   [switch]$MutatingChecks
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($Password)) {
+  $Password = $env:PAINEL_DIEF_OWNER_PASSWORD
+}
+if ([string]::IsNullOrWhiteSpace($Password)) {
+  throw "Informe -Password ou defina PAINEL_DIEF_OWNER_PASSWORD antes de rodar o smoke."
+}
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $result = [ordered]@{}
