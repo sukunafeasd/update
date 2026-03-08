@@ -489,6 +489,8 @@ pre,
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .login-brand {
@@ -1287,21 +1289,41 @@ body.sidebar-collapsed #channel-panel {
   min-width: 0;
 }
 
+.room-copy,
+.presence-text,
+.roster-copy,
+.info-card,
+.utility-card,
+.search-card,
+.media-card,
+.modal-card,
+.topbar-main,
+.topbar-actions,
+.owner-admin-panel,
+.search-card-head,
+.media-card-head,
+.search-section-head {
+  min-width: 0;
+}
+
 .room-header-top {
   display: flex;
   align-items: center;
   gap: 0.85rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 #topbar h2 {
   margin: 0;
   font-size: 1.36rem;
+  overflow-wrap: anywhere;
 }
 
 #topbar p {
   margin: 0.15rem 0 0;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .room-icon {
@@ -1410,7 +1432,7 @@ body.focus-mode #btn-sidebar-open {
 }
 
 .topbar-actions {
-  width: 138px;
+  width: 154px;
   padding: 0.9rem;
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
@@ -1439,6 +1461,7 @@ body.focus-mode #btn-sidebar-open {
 
 .room-pill-row {
   padding-top: 0.05rem;
+  min-width: 0;
 }
 
 #btn-focus-mode.active {
@@ -1488,6 +1511,7 @@ body.focus-mode #btn-sidebar-open {
 .dashboard-strip strong {
   font-size: 0.96rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-tip-card {
@@ -1503,12 +1527,18 @@ body.focus-mode #btn-sidebar-open {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
 }
 
 .apps-lab-deck {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .sus-panel {
@@ -1561,6 +1591,7 @@ body.focus-mode #btn-sidebar-open {
   margin: 0;
   color: rgba(242, 246, 255, 0.82);
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .sus-warning {
@@ -1757,6 +1788,7 @@ body.focus-mode #btn-sidebar-open {
 .message-wrap {
   display: grid;
   gap: 0.58rem;
+  min-width: 0;
 }
 
 .message-head,
@@ -1765,6 +1797,7 @@ body.focus-mode #btn-sidebar-open {
   align-items: center;
   gap: 0.65rem;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .compact-head {
@@ -1776,6 +1809,7 @@ body.focus-mode #btn-sidebar-open {
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .message-link {
@@ -2055,6 +2089,7 @@ body.focus-mode #btn-sidebar-open {
   border: 0;
   background: transparent;
   padding: 0;
+  max-height: 32dvh;
 }
 
 .composer-actions {
@@ -2191,6 +2226,7 @@ body.inspector-collapsed #inspector-panel {
   color: var(--muted);
   line-height: 1.55;
   font-size: 0.88rem;
+  overflow-wrap: anywhere;
 }
 
 .search-card button,
@@ -2217,6 +2253,7 @@ body.inspector-collapsed #inspector-panel {
 .presence-room-copy {
   color: var(--muted);
   font-size: 0.82rem;
+  overflow-wrap: anywhere;
 }
 
 .media-card-pills,
@@ -2567,6 +2604,15 @@ body.inspector-collapsed #inspector-panel {
   line-height: 1.55;
 }
 
+.roster-note code,
+.apps-lab-deck code,
+.utility-card code,
+.media-modal-meta code,
+#terminal-output {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .guide-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2744,6 +2790,18 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     grid-column: span 1;
   }
 
+  .dashboard-strip {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.25rem;
+  }
+
+  .dashboard-strip article {
+    min-width: 180px;
+    flex: 0 0 180px;
+  }
+
   .apps-lab-deck {
     grid-template-columns: 1fr;
   }
@@ -2823,12 +2881,21 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     grid-template-columns: 1fr;
   }
 
+  .topbar-main,
+  .topbar-actions {
+    padding: 0.85rem 0.9rem;
+  }
+
   .profile-grid {
     grid-template-columns: 1fr;
   }
 
   .filter-toolbar,
   .profile-preview-card {
+    grid-template-columns: 1fr;
+  }
+
+  .media-toolbar-actions {
     grid-template-columns: 1fr;
   }
 
@@ -2844,8 +2911,31 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .topbar-utility-strip {
-    flex-wrap: wrap;
-    overflow-x: visible;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .topbar-utility-strip .btn,
+  .room-pill-row .badge,
+  .dashboard-quickline .ghost-pill {
+    flex: 0 0 auto;
+  }
+
+  .presence-item {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .presence-actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+
+  .presence-actions .btn {
+    flex: 1 1 140px;
+  }
+
+  .roster-actions {
+    align-items: stretch;
   }
 
   .media-modal-layout {
@@ -2863,6 +2953,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.65rem;
   }
 
+  #workspace {
+    gap: 0.65rem;
+  }
+
   .login-download-actions {
     flex-direction: column;
     align-items: stretch;
@@ -2874,6 +2968,41 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #conversation-panel {
     padding: 0.85rem;
+  }
+
+  .topbar-main,
+  .topbar-actions {
+    padding: 0.8rem;
+  }
+
+  .room-header-top {
+    align-items: flex-start;
+  }
+
+  .room-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+  }
+
+  #topbar h2 {
+    font-size: 1.12rem;
+  }
+
+  #topbar p {
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  .room-pill-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .dashboard-strip article {
+    min-width: 156px;
+    flex-basis: 156px;
   }
 
   #channel-panel,
@@ -2895,6 +3024,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .composer-actions {
     display: grid;
+  }
+
+  .composer-shell textarea {
+    min-height: 88px;
+    max-height: 24dvh;
   }
 
   .pending-upload-row,
@@ -2935,5 +3069,31 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .roster-actions .btn,
   .roster-actions select {
     width: 100%;
+  }
+}
+
+@media (max-height: 820px) {
+  #login-view {
+    padding: 1rem;
+    align-items: start;
+  }
+
+  .login-shell {
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .login-card {
+    gap: 1rem;
+    padding: 1.2rem;
+  }
+
+  .topbar-main,
+  .topbar-actions {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .composer-shell textarea {
+    min-height: 80px;
+    max-height: 18dvh;
   }
 }
