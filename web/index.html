@@ -189,6 +189,7 @@
                 <strong id="dashboard-nego-tip">Bah, escolhe uma sala e faz o estrago certo.</strong>
               </article>
             </div>
+            <div id="dashboard-quickline" class="dashboard-quickline"></div>
 
             <section id="apps-lab-deck" class="apps-lab-deck hidden">
               <article class="utility-card">
@@ -373,6 +374,19 @@
               <h4>Membros e status</h4>
               <span id="members-status-pill" class="ghost-pill">0 online</span>
             </div>
+            <div class="filter-toolbar">
+              <input id="members-search-input" type="search" placeholder="Filtrar nome, cargo, status ou bio..." />
+              <select id="members-role-filter">
+                <option value="all">Todos</option>
+                <option value="online">So online</option>
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+                <option value="vip">VIP</option>
+                <option value="member">Membro</option>
+                <option value="ai">IA</option>
+              </select>
+            </div>
+            <div id="members-summary" class="section-summary">Carregando a tropa...</div>
             <div id="presence-sidebar" class="presence-list"></div>
           </section>
 
@@ -383,6 +397,14 @@
             </div>
             <div class="media-toolbar">
               <input id="media-search-input" type="search" placeholder="Filtrar nome, tipo ou autor..." />
+              <div class="media-toolbar-actions">
+                <select id="media-sort-select">
+                  <option value="recent">Mais recentes</option>
+                  <option value="oldest">Mais antigos</option>
+                  <option value="name">Nome A-Z</option>
+                  <option value="size">Maior tamanho</option>
+                </select>
+              </div>
               <div class="media-filters">
                 <button class="btn btn-ghost active" type="button" data-media-filter="all">Tudo</button>
                 <button class="btn btn-ghost" type="button" data-media-filter="image">Fotos</button>
@@ -391,6 +413,7 @@
                 <button class="btn btn-ghost" type="button" data-media-filter="file">Arquivos</button>
               </div>
             </div>
+            <div id="media-summary" class="section-summary">Sem midia carregada ainda.</div>
             <div id="room-media-list" class="media-list"></div>
           </section>
 
@@ -403,6 +426,7 @@
               <input id="inspector-search-input" type="search" placeholder="Buscar neste universo..." />
                 <button id="btn-search-submit" class="btn btn-primary" type="submit">Rodar busca</button>
             </form>
+            <div id="search-summary" class="section-summary hidden"></div>
             <div id="search-results" class="search-results"></div>
           </section>
 
@@ -512,6 +536,16 @@
           </div>
         </div>
 
+        <section class="profile-preview-card">
+          <div id="profile-preview-avatar" class="social-profile-avatar">PD</div>
+          <div class="profile-preview-copy">
+            <strong id="profile-preview-name">Painel Dief</strong>
+            <span id="profile-preview-meta">online // matrix</span>
+            <p id="profile-preview-status" class="social-profile-status hidden">Sem status customizado.</p>
+            <p id="profile-preview-bio" class="social-profile-bio">Tua bio aparece aqui antes de salvar.</p>
+          </div>
+        </section>
+
               <button id="btn-profile-submit" class="btn btn-primary" type="submit">Salvar perfil</button>
       </form>
     </div>
@@ -546,6 +580,17 @@
             <strong id="member-last-seen">--</strong>
             <p id="member-relation-copy">Sem relacao especial.</p>
           </article>
+          <article class="info-card">
+            <span>Raio local</span>
+            <strong id="member-room-copy">Sem sala em foco</strong>
+            <p id="member-activity-copy">Sem atividade local carregada.</p>
+          </article>
+        </div>
+
+        <div class="member-stat-strip">
+          <span id="member-visible-messages" class="ghost-pill">0 msgs visiveis</span>
+          <span id="member-visible-files" class="ghost-pill">0 midias visiveis</span>
+          <span id="member-visible-rooms" class="ghost-pill">0 salas visiveis</span>
         </div>
 
         <div class="inline-row social-actions">

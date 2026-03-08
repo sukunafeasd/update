@@ -106,8 +106,11 @@
     inspectorTab: "overview",
     searchResult: null,
     searchQuery: "",
+    memberSearch: "",
+    memberRoleFilter: "all",
     mediaFilter: "all",
     mediaSearch: "",
+    mediaSort: "recent",
     mediaPreview: null,
     highlightMessageId: 0,
     typingIdleTimer: null,
@@ -698,9 +701,140 @@
   }
 
   function filteredRoomAttachments() {
-    return currentRoomAttachments().filter(mediaMatchesFilters).sort(function(a, b) {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return currentRoomAttachments().filter(mediaMatchesFilters).sort(compareAttachmentItems);
+  }
+
+  function compareAttachmentItems(a, b) {
+    var mode = state.mediaSort || "recent";
+    var timeA = new Date(a.createdAt).getTime();
+    var timeB = new Date(b.createdAt).getTime();
+    var nameA = String(a.attachment && a.attachment.name || "");
+    var nameB = String(b.attachment && b.attachment.name || "");
+    var sizeA = Number(a.attachment && a.attachment.sizeBytes || 0);
+    var sizeB = Number(b.attachment && b.attachment.sizeBytes || 0);
+    if (mode === "oldest") {
+      return timeA - timeB || nameA.localeCompare(nameB, "pt-BR");
+    }
+    if (mode === "name") {
+      return nameA.localeCompare(nameB, "pt-BR") || (timeB - timeA);
+    }
+    if (mode === "size") {
+      return sizeB - sizeA || (timeB - timeA);
+    }
+    return timeB - timeA || nameA.localeCompare(nameB, "pt-BR");
+  }
+
+  function filteredPresenceItems() {
+    var query = normalizeText(state.memberSearch);
+    return state.online.slice(0).sort(function(a, b) {
+      if (a.online === b.online) {
+        return String(a.displayName || a.username || "").localeCompare(String(b.displayName || b.username || ""), "pt-BR");
+      }
+      return a.online ? -1 : 1;
+    }).filter(function(person) {
+      var roleFilter = String(state.memberRoleFilter || "all");
+      var haystack;
+      if (roleFilter === "online" && !person.online) {
+        return false;
+      }
+      if (roleFilter !== "all" && roleFilter !== "online" && String(person.role || "member") !== roleFilter) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      haystack = [
+        person.displayName,
+        person.username,
+        person.role,
+        person.status,
+        person.statusText,
+        person.bio
+      ].map(normalizeText).join(" ");
+      return haystack.indexOf(query) >= 0;
     });
+  }
+
+  function memberLocalStats(userId) {
+    var stats = {
+      messageCount: 0,
+      attachmentCount: 0,
+      roomMap: {},
+      lastMessage: null,
+      lastRoom: null
+    };
+    Object.keys(state.messagesByRoom || {}).forEach(function(roomId) {
+      (state.messagesByRoom[roomId] || []).forEach(function(message) {
+        var authorId = Number(message.authorId || message.userId || 0);
+        if (authorId !== Number(userId)) {
+          return;
+        }
+        stats.messageCount += 1;
+        stats.roomMap[String(message.roomId)] = true;
+        if (message.attachment) {
+          stats.attachmentCount += 1;
+        }
+        if (!stats.lastMessage || new Date(message.createdAt).getTime() > new Date(stats.lastMessage.createdAt).getTime()) {
+          stats.lastMessage = message;
+          stats.lastRoom = roomById(message.roomId);
+        }
+      });
+    });
+    stats.roomCount = Object.keys(stats.roomMap).length;
+    return stats;
+  }
+
+  function dashboardQuicklineItems(room, mode, attachments) {
+    var onlineNow = state.online.filter(function(item) { return item.online; });
+    var chips = [];
+    if (isMembersHub()) {
+      chips.push(onlineNow.length + " online agora");
+      chips.push(state.online.filter(function(item) { return String(item.role || "") === "admin" && item.online; }).length + " admins ativos");
+      chips.push(state.online.filter(function(item) { return String(item.role || "") === "vip" && item.online; }).length + " vip na base");
+      if (state.memberSearch || state.memberRoleFilter !== "all") {
+        chips.push("filtro de membros ligado");
+      }
+      return chips;
+    }
+    if (isDirectHubEmpty()) {
+      chips.push("abre um membro pra puxar DM");
+      chips.push(onlineNow.length + " contatos online");
+      chips.push(state.rooms.filter(function(item) { return item.scope === "dm"; }).length + " dms existentes");
+      return chips;
+    }
+    if (!room) {
+      return chips;
+    }
+    if (isAppsLabRoom(room)) {
+      chips.push("build " + UNIVERSALD_META.shortVersion);
+      chips.push(UNIVERSALD_META.sizeLabel);
+      chips.push("sha " + UNIVERSALD_META.sha256.slice(0, 10));
+      chips.push(state.appInstalled ? "app ja visto nesse device" : "app ainda nao visto");
+      return chips;
+    }
+    chips.push(currentRoomMessages().length + " msgs visiveis");
+    chips.push(attachments.length + " anexos");
+    chips.push(activeRoomMembers().length + " na sala");
+    chips.push(Number(state.unread[String(state.activeRoomId)] || 0) + " nao lidas");
+    chips.push(isFavoriteNavId(state.activeNavId) ? "area fixada" : "area solta");
+    if (room.lastMessageAt) {
+      chips.push("ultimo pulso " + formatRelative(room.lastMessageAt));
+    }
+    chips.push(roomModeLabel(room, mode) + " // " + roomPulseLabel(room));
+    return chips;
+  }
+
+  function mediaSortLabel(value) {
+    if (value === "oldest") {
+      return "mais antigos";
+    }
+    if (value === "name") {
+      return "nome";
+    }
+    if (value === "size") {
+      return "tamanho";
+    }
+    return "mais recentes";
   }
 
   function uploadLimitLabel() {
@@ -2017,23 +2151,27 @@
 
   function renderPresenceSidebar() {
     var list = q("presence-sidebar");
-    var items = state.online.slice(0).sort(function(a, b) {
-      if (a.online === b.online) {
-        return String(a.displayName || "").localeCompare(String(b.displayName || ""), "pt-BR");
-      }
-      return a.online ? -1 : 1;
-    });
-    q("members-status-pill").textContent = items.filter(function(item) { return item.online; }).length + " online";
+    var summary = q("members-summary");
+    var items = filteredPresenceItems();
+    var onlineVisible = items.filter(function(item) { return item.online; }).length;
+    q("members-status-pill").textContent = onlineVisible + " online";
     list.innerHTML = "";
     if (!items.length) {
-      list.innerHTML = "<div class='empty-state'>Sem membros carregados.</div>";
+      if (summary) {
+        summary.textContent = "Nenhum membro bate com teu filtro agora.";
+      }
+      list.innerHTML = "<div class='empty-state'>Sem membros carregados nesse recorte. Limpa o filtro ou muda o cargo.</div>";
       return;
+    }
+    if (summary) {
+      summary.textContent = items.length + " membros visiveis // " + onlineVisible + " online // filtro " + (state.memberRoleFilter === "all" ? "geral" : state.memberRoleFilter);
     }
     items.forEach(function(person) {
       var canDM = state.viewer && Number(person.userId) !== Number(state.viewer.id) && person.role !== "ai";
       var socialBadges = [];
       var avatarUrl = safeAvatarUrl(person.avatarUrl);
       var statusCopy = personStatusCopy(person);
+      var liveRoom = person.online && person.roomId ? roomById(person.roomId) : null;
       if (person.blockedByViewer) {
         socialBadges.push("bloqueado");
       }
@@ -2050,9 +2188,15 @@
           (avatarUrl ? "<img class='presence-avatar' alt='" + esc(person.displayName || person.username) + "' src='" + esc(avatarUrl) + "' />" : "<div class='presence-avatar'>" + esc(initials(person.displayName || person.username)) + "</div>") +
         "</button>" +
         "<div class='presence-text'>" +
-          "<button type='button' class='identity-trigger identity-name' data-action='open-user-profile' data-user-id='" + Number(person.userId) + "'>" + esc(person.displayName || person.username) + "</button>" +
-          "<span>" + esc((person.role || "member") + " // " + (person.online ? (person.status || "online") : "offline")) + "</span>" +
-          (statusCopy ? "<span>" + esc(statusCopy) + "</span>" : "") +
+          "<div class='presence-headline'>" +
+            "<button type='button' class='identity-trigger identity-name' data-action='open-user-profile' data-user-id='" + Number(person.userId) + "'>" + esc(person.displayName || person.username) + "</button>" +
+            "<span class='presence-room-copy'>" + esc(liveRoom ? displayRoomName(liveRoom) : (person.online ? "na base" : "offline")) + "</span>" +
+          "</div>" +
+          "<div class='inline-row presence-pills'>" +
+            "<span class='ghost-pill'>" + esc(person.role || "member") + "</span>" +
+            "<span class='ghost-pill'>" + esc(person.online ? (person.status || "online") : "offline") + "</span>" +
+            (statusCopy ? "<span class='ghost-pill ghost-pill-soft'>" + esc(statusCopy) + "</span>" : "") +
+          "</div>" +
           (socialBadges.length ? "<span>" + esc(socialBadges.join(" // ")) + "</span>" : "") +
         "</div>" +
         "<div class='presence-actions'>" +
@@ -2218,20 +2362,27 @@
     var attachments = currentRoomAttachments();
     var mode = accessForRoom(room);
     var onlineNow = state.online.filter(function(item) { return item.online; }).length;
+    var quickline = q("dashboard-quickline");
     q("dashboard-online-now").textContent = String(onlineNow);
     q("dashboard-theme").textContent = themeLabel(state.viewer && state.viewer.theme || "matrix");
     if (isMembersHub()) {
-      q("dashboard-last-activity").textContent = formatDateTime(new Date());
-      q("dashboard-room-files").textContent = "0";
+      q("dashboard-last-activity").textContent = onlineNow ? (onlineNow + " ativos") : "base vazia";
+      q("dashboard-room-files").textContent = String(state.online.length);
       q("dashboard-room-mode").textContent = roomModeLabel(room, mode);
       q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
+      quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
+        return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
+      }).join("");
       return;
     }
     if (isDirectHubEmpty()) {
       q("dashboard-last-activity").textContent = "sem DM aberta";
-      q("dashboard-room-files").textContent = "0";
+      q("dashboard-room-files").textContent = String(state.rooms.filter(function(item) { return item.scope === "dm"; }).length);
       q("dashboard-room-mode").textContent = roomModeLabel(room, mode);
       q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
+      quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
+        return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
+      }).join("");
       return;
     }
     if (!room) {
@@ -2239,6 +2390,7 @@
       q("dashboard-room-files").textContent = "0";
       q("dashboard-room-mode").textContent = roomModeLabel(room, mode);
       q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
+      quickline.innerHTML = "";
       return;
     }
     if (isAppsLabRoom(room)) {
@@ -2246,12 +2398,18 @@
       q("dashboard-room-files").textContent = UNIVERSALD_META.sizeLabel;
       q("dashboard-room-mode").textContent = "central do app // release";
       q("dashboard-nego-tip").textContent = "Bah, aqui o papo e app: abre, baixa e atualiza o UniversalD sem chat se atropelando.";
+      quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
+        return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
+      }).join("");
       return;
     }
     q("dashboard-last-activity").textContent = room.lastMessageAt ? formatDateTime(room.lastMessageAt) : "sem atividade";
     q("dashboard-room-files").textContent = String(attachments.length);
     q("dashboard-room-mode").textContent = roomModeLabel(room, mode) + " // " + roomPulseLabel(room);
     q("dashboard-nego-tip").textContent = negoDashboardTip(room, mode);
+    quickline.innerHTML = dashboardQuicklineItems(room, mode, attachments).map(function(item) {
+      return "<span class='ghost-pill ghost-pill-soft'>" + esc(item) + "</span>";
+    }).join("");
   }
 
   function renderAppsLabDeck() {
@@ -3076,19 +3234,27 @@
     var list = q("room-media-list");
     var attachments = filteredRoomAttachments();
     var total = currentRoomAttachments().length;
+    var summary = q("media-summary");
     q("media-search-input").value = state.mediaSearch;
+    q("media-sort-select").value = state.mediaSort;
     Array.prototype.slice.call(document.querySelectorAll("[data-media-filter]")).forEach(function(item) {
       item.classList.toggle("active", item.getAttribute("data-media-filter") === state.mediaFilter);
     });
     if (isHubView()) {
       q("files-status-pill").textContent = "0 itens";
+      if (summary) {
+        summary.textContent = "Seleciona uma sala real para abrir a biblioteca de midia.";
+      }
       list.innerHTML = "<div class='empty-state'>Seleciona uma sala de chat para ver a midia dela.</div>";
       return;
     }
     q("files-status-pill").textContent = attachments.length + " / " + total + " itens";
     list.innerHTML = "";
+    if (summary) {
+      summary.textContent = "Filtro " + (state.mediaFilter === "all" ? "geral" : state.mediaFilter) + " // ordem " + mediaSortLabel(state.mediaSort) + " // " + attachments.length + " visiveis";
+    }
     if (!attachments.length) {
-      list.innerHTML = "<div class='empty-state'>Nenhum anexo bate com esse filtro nessa sala.</div>";
+      list.innerHTML = "<div class='empty-state'>Nenhum anexo bate com esse filtro nessa sala. Tenta limpar a busca ou trocar a ordem.</div>";
       return;
     }
     attachments.forEach(function(message) {
@@ -3097,16 +3263,23 @@
       var card = document.createElement("article");
       card.className = "media-card";
       var size = bytesLabel(attachment.sizeBytes);
-      var meta = message.authorName + " // " + size + (attachment.width && attachment.height ? (" // " + attachment.width + "x" + attachment.height) : "");
+      var dims = attachment.width && attachment.height ? (attachment.width + "x" + attachment.height) : "";
       card.innerHTML =
-        "<strong>" + esc(attachment.name) + "</strong>" +
+        "<div class='media-card-head'><strong>" + esc(attachment.name) + "</strong><span class='ghost-pill'>" + esc(attachment.kind || "arquivo") + "</span></div>" +
         (attachmentUrl && attachment.kind === "image" ? "<button type='button' class='media-thumb' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><img alt='" + esc(attachment.name) + "' src='" + esc(attachmentUrl) + "' /></button>" : "") +
         (attachmentUrl && attachment.kind === "video" ? "<button type='button' class='media-thumb' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><video preload='metadata' muted src='" + esc(attachmentUrl) + "'></video></button>" : "") +
         (attachmentUrl && attachment.kind === "audio" ? "<audio controls preload='metadata' src='" + esc(attachmentUrl) + "'></audio>" : "") +
         (attachment.kind === "file" ? "<div class='media-file-fallback'><strong>" + esc(attachment.extension || "arquivo") + "</strong><span>" + esc(attachment.contentType || "download") + "</span></div>" : "") +
-        "<p class='media-meta'>" + esc(meta) + "</p>" +
+        "<div class='inline-row media-card-pills'>" +
+          "<span class='ghost-pill'>" + esc(size) + "</span>" +
+          (dims ? "<span class='ghost-pill'>" + esc(dims) + "</span>" : "") +
+          "<span class='ghost-pill'>" + esc(message.authorName || "alguem") + "</span>" +
+          "<span class='ghost-pill'>" + esc(formatRelative(message.createdAt)) + "</span>" +
+        "</div>" +
+        (message.body ? "<p class='media-caption'>" + esc(String(message.body).slice(0, 140)) + "</p>" : "") +
         "<div class='attachment-actions'>" +
           "<button class='btn btn-ghost' type='button' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Abrir</button>" +
+          "<button class='btn btn-ghost' type='button' data-action='jump-message' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Origem</button>" +
           (attachmentUrl ? "<a class='btn btn-ghost' href='" + esc(attachmentUrl) + "' target='_blank' rel='noreferrer'>Baixar</a>" : "") +
         "</div>";
       list.appendChild(card);
@@ -3156,19 +3329,32 @@
 
   function renderSearchResults() {
     var wrap = q("search-results");
+    var summary = q("search-summary");
+    var roomCount;
+    var userCount;
+    var messageCount;
     wrap.innerHTML = "";
     if (!state.searchQuery) {
+      summary.classList.add("hidden");
+      summary.textContent = "";
       wrap.innerHTML = "<div class='empty-state'>Digite algo e roda a busca global.</div>";
       return;
     }
     if (!state.searchResult) {
+      summary.classList.remove("hidden");
+      summary.textContent = "Rodando busca em salas, usuarios e mensagens...";
       wrap.innerHTML = "<div class='empty-state'>Buscando...</div>";
       return;
     }
+    roomCount = (state.searchResult.rooms || []).length;
+    userCount = (state.searchResult.users || []).length;
+    messageCount = (state.searchResult.messages || []).length;
+    summary.classList.remove("hidden");
+    summary.textContent = "\"" + state.searchQuery + "\" // " + (roomCount + userCount + messageCount) + " resultados // salas " + roomCount + " // usuarios " + userCount + " // mensagens " + messageCount;
     renderSearchSection(wrap, "Salas", state.searchResult.rooms || [], function(room) {
       return "<button class='btn btn-ghost' type='button' data-action='jump-room' data-room-id='" + Number(room.id) + "'>Abrir sala</button>";
     }, function(room) {
-      return "<strong>" + esc(displayRoomName(room)) + "</strong><p>" + esc(roomKindLabel(room) + " // " + displayRoomDescription(room)) + "</p>";
+      return "<div class='search-card-head'><strong>" + esc(displayRoomName(room)) + "</strong><span class='ghost-pill'>" + esc(roomKindLabel(room)) + "</span></div><p>" + esc(displayRoomDescription(room)) + "</p>";
     });
     renderSearchSection(wrap, "Usuarios", state.searchResult.users || [], function(user) {
       var actions = "<button class='btn btn-ghost' type='button' data-action='open-user-profile' data-user-id='" + Number(user.id) + "'>Perfil</button>";
@@ -3177,21 +3363,23 @@
       }
       return actions + "<button class='btn btn-ghost' type='button' data-action='open-dm' data-user-id='" + Number(user.id) + "'>Abrir DM</button>";
     }, function(user) {
-      return "<strong>" + esc(user.displayName || user.username) + "</strong><p>" + esc((user.role || "member") + " // " + (user.email || "sem email")) + "</p>";
+      var presence = presenceByUserId(user.id) || {};
+      return "<div class='search-card-head'><strong>" + esc(user.displayName || user.username) + "</strong><span class='ghost-pill'>" + esc(user.role || "member") + "</span></div><p>" + esc((presence.online ? (presence.status || "online") : "offline") + " // " + (user.email || "sem email")) + "</p>";
     });
     renderSearchSection(wrap, "Mensagens", state.searchResult.messages || [], function(message) {
       return "<button class='btn btn-ghost' type='button' data-action='jump-message' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Ir pra mensagem</button>";
     }, function(message) {
       var preview = message.body || (message.attachment ? "[anexo] " + message.attachment.name : "[sem texto]");
       var meta = message.attachment ? (" // " + (message.attachment.kind || "arquivo")) : "";
-      return "<strong>" + esc(message.authorName || "Mensagem") + "</strong><p>" + esc(preview + meta) + "</p>";
+      var room = roomById(message.roomId);
+      return "<div class='search-card-head'><strong>" + esc(message.authorName || "Mensagem") + "</strong><span class='ghost-pill'>" + esc(room ? displayRoomName(room) : "sala") + "</span></div><p>" + esc(preview + meta) + "</p><span class='search-card-meta'>" + esc(formatRelative(message.createdAt)) + "</span>";
     });
   }
 
   function renderSearchSection(root, title, items, actionMarkup, copyMarkup) {
     var section = document.createElement("section");
     section.className = "search-section";
-    section.innerHTML = "<h4>" + esc(title) + "</h4>";
+    section.innerHTML = "<div class='search-section-head'><h4>" + esc(title) + "</h4><span class='ghost-pill'>" + items.length + "</span></div>";
     if (!items.length) {
       section.innerHTML += "<div class='empty-state'>Sem resultado nessa faixa.</div>";
       root.appendChild(section);
@@ -3738,7 +3926,31 @@
     q("profile-bio").value = state.viewer.bio || "";
     q("profile-status-text").value = state.viewer.statusText || "";
     syncThemePresetState();
+    renderProfileFormPreview();
     q("profile-modal").classList.remove("hidden");
+  }
+
+  function renderProfileFormPreview() {
+    var avatarWrap = q("profile-preview-avatar");
+    var avatarUrl = safeAvatarUrl(q("profile-avatar").value.trim());
+    var displayName = q("profile-display").value.trim() || (state.viewer && (state.viewer.displayName || state.viewer.username)) || "Painel Dief";
+    var status = q("profile-status").value || "online";
+    var statusText = q("profile-status-text").value.trim();
+    var bio = q("profile-bio").value.trim();
+    var theme = q("profile-theme").value || "matrix";
+    if (!avatarWrap) {
+      return;
+    }
+    if (avatarUrl) {
+      avatarWrap.innerHTML = "<img class='message-avatar profile-avatar-lg' alt='" + esc(displayName) + "' src='" + esc(avatarUrl) + "' />";
+    } else {
+      avatarWrap.textContent = initials(displayName);
+    }
+    q("profile-preview-name").textContent = displayName;
+    q("profile-preview-meta").textContent = status + " // " + themeLabel(theme);
+    q("profile-preview-status").textContent = statusText || "Sem status customizado.";
+    q("profile-preview-status").classList.toggle("hidden", !statusText);
+    q("profile-preview-bio").textContent = bio || "Tua bio aparece aqui antes de salvar.";
   }
 
   function refreshAppsNotesState(saved) {
@@ -3766,10 +3978,14 @@
     var actionDM = q("member-action-dm");
     var actionBlock = q("member-action-block");
     var actionMute = q("member-action-mute");
+    var stats;
+    var liveRoom;
     var statusCopy = "";
     if (!profile) {
       return;
     }
+    stats = memberLocalStats(profile.user.userId || profile.user.id);
+    liveRoom = profile.user.roomId ? roomById(profile.user.roomId) : (stats.lastRoom || null);
     statusCopy = personStatusCopy(profile.user);
     q("member-name").textContent = profile.user.displayName || profile.user.username || "Membro";
     q("member-meta").textContent = (profile.user.role || "member") + " // " + (profile.user.online ? (profile.user.status || "online") : "offline");
@@ -3779,6 +3995,13 @@
     q("member-status-copy").textContent = statusCopy || "Sem status customizado.";
     q("member-status-copy").classList.toggle("hidden", !statusCopy);
     q("member-last-seen").textContent = profile.user.online ? "agora" : formatDateTime(profile.user.lastSeenAt);
+    q("member-room-copy").textContent = liveRoom ? displayRoomName(liveRoom) : "Sem sala em foco";
+    q("member-activity-copy").textContent = stats.lastMessage
+      ? ("Ultimo rastro visivel em " + formatRelative(stats.lastMessage.createdAt))
+      : "Sem atividade local carregada nesse dispositivo.";
+    q("member-visible-messages").textContent = stats.messageCount + " msgs visiveis";
+    q("member-visible-files").textContent = stats.attachmentCount + " midias visiveis";
+    q("member-visible-rooms").textContent = stats.roomCount + " salas visiveis";
     q("member-relation-copy").textContent = profile.user.hasBlockedViewer
       ? "Esse usuario bloqueou teu contato."
       : (profile.user.blockedByViewer
@@ -4937,17 +5160,26 @@
       }
     });
     q("profile-form").addEventListener("submit", handleProfileSubmit);
-    q("profile-theme").addEventListener("change", syncThemePresetState);
+    q("profile-theme").addEventListener("change", function() {
+      syncThemePresetState();
+      renderProfileFormPreview();
+    });
     Array.prototype.slice.call(document.querySelectorAll("[data-theme-preset]")).forEach(function(button) {
       button.addEventListener("click", function() {
         applyThemePreset(button.getAttribute("data-theme-preset"), button.getAttribute("data-theme-accent"));
+        renderProfileFormPreview();
       });
     });
     q("btn-upload-avatar").addEventListener("click", function() { q("avatar-upload-input").click(); });
     q("avatar-upload-input").addEventListener("change", function() {
       uploadSelectedFile(q("avatar-upload-input"), function(attachment) {
         q("profile-avatar").value = safeAttachmentUrl(attachment.url);
+        renderProfileFormPreview();
       });
+    });
+    ["profile-display", "profile-status", "profile-accent", "profile-avatar", "profile-bio", "profile-status-text"].forEach(function(id) {
+      q(id).addEventListener("input", renderProfileFormPreview);
+      q(id).addEventListener("change", renderProfileFormPreview);
     });
     q("create-user-form").addEventListener("submit", handleCreateUser);
     q("event-form").addEventListener("submit", handleEventCreate);
@@ -4967,8 +5199,21 @@
       event.preventDefault();
       runSearch(q("inspector-search-input").value.trim());
     });
+    q("members-search-input").addEventListener("input", function(event) {
+      state.memberSearch = event.target.value || "";
+      renderPresenceSidebar();
+    });
+    q("members-role-filter").addEventListener("change", function(event) {
+      state.memberRoleFilter = event.target.value || "all";
+      renderPresenceSidebar();
+    });
     q("media-search-input").addEventListener("input", function(event) {
       state.mediaSearch = event.target.value || "";
+      renderFiles();
+      renderMediaPreview();
+    });
+    q("media-sort-select").addEventListener("change", function(event) {
+      state.mediaSort = event.target.value || "recent";
       renderFiles();
       renderMediaPreview();
     });
