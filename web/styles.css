@@ -188,6 +188,11 @@ select {
   filter: saturate(0.92);
 }
 
+.btn.active {
+  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .btn-primary {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent-strong) 16%, transparent));
   border-color: color-mix(in srgb, var(--accent) 46%, transparent);
@@ -757,6 +762,14 @@ body.sidebar-collapsed #channel-panel {
   color: var(--muted);
 }
 
+#composer-draft-hint.has-draft {
+  color: color-mix(in srgb, var(--accent) 72%, white);
+}
+
+#composer-draft-hint.is-empty {
+  opacity: 0.72;
+}
+
 .sidebar-block {
   min-height: 0;
   display: grid;
@@ -1209,6 +1222,7 @@ body.focus-mode #btn-sidebar-open {
   overflow-x: auto;
   padding-bottom: 0.15rem;
   scrollbar-width: thin;
+  align-items: center;
 }
 
 .topbar-utility-strip .btn {
@@ -1673,6 +1687,16 @@ body.focus-mode #btn-sidebar-open {
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
   padding: 0.85rem;
+}
+
+.composer-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.1rem;
 }
 
 .composer-shell:focus-within {

@@ -47,10 +47,10 @@
   ];
   var APP_DOWNLOAD_URL = "/downloads/universalD.exe";
   var UNIVERSALD_META = {
-    version: "3.1.1-desktop-native",
-    shortVersion: "v3.1.1",
-    sizeLabel: "16.12 MB",
-    sha256: "53983C2F80483F3FD04C3EDCFFB61B68917FF5843B92390D4C5F855F4A095613",
+    version: "3.1.2-desktop-native",
+    shortVersion: "v3.1.2",
+    sizeLabel: "16.13 MB",
+    sha256: "4BB44335F95D95130007173DD5160D6C21A7B537266D86C7D5597B217300D1F8",
     changelog: [
       "Login do app desktop refeito em modo compatível com o motor nativo do exe.",
       "Sessão do painel agora tem fallback local para sobreviver melhor a reload e cookie ruim.",
@@ -458,6 +458,16 @@
     return PRIMARY_NAV[0];
   }
 
+  function hasPrimaryNavId(id) {
+    var i;
+    for (i = 0; i < PRIMARY_NAV.length; i++) {
+      if (PRIMARY_NAV[i].id === id) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function navRoom(nav) {
     if (!nav) {
       return null;
@@ -758,6 +768,18 @@
     return "painel-dief.app-install-state";
   }
 
+  function roomDraftStorageKey(roomId) {
+    return "painel-dief.room-draft." + Number(state.viewer && state.viewer.id || 0) + "." + Number(roomId || 0);
+  }
+
+  function activeRoomStorageKey() {
+    return "painel-dief.active-room." + Number(state.viewer && state.viewer.id || 0);
+  }
+
+  function activeNavStorageKey() {
+    return "painel-dief.active-nav." + Number(state.viewer && state.viewer.id || 0);
+  }
+
   function loadAppsNotes() {
     try {
       return window.localStorage.getItem(notesStorageKey()) || "";
@@ -844,6 +866,74 @@
     }
   }
 
+  function loadRoomDraft(roomId) {
+    try {
+      return window.localStorage.getItem(roomDraftStorageKey(roomId)) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function saveRoomDraft(roomId, value) {
+    try {
+      window.localStorage.setItem(roomDraftStorageKey(roomId), String(value || ""));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function clearRoomDraft(roomId) {
+    try {
+      window.localStorage.removeItem(roomDraftStorageKey(roomId));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function loadStoredActiveRoomId() {
+    try {
+      return Number(window.localStorage.getItem(activeRoomStorageKey()) || 0);
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  function saveStoredActiveRoomId(roomId) {
+    try {
+      if (!roomId) {
+        window.localStorage.removeItem(activeRoomStorageKey());
+        return true;
+      }
+      window.localStorage.setItem(activeRoomStorageKey(), String(Number(roomId) || 0));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function loadStoredActiveNavId() {
+    try {
+      return String(window.localStorage.getItem(activeNavStorageKey()) || "");
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function saveStoredActiveNavId(navId) {
+    try {
+      if (!navId) {
+        window.localStorage.removeItem(activeNavStorageKey());
+        return true;
+      }
+      window.localStorage.setItem(activeNavStorageKey(), String(navId));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
   function syncFocusModeUI() {
     var button = q("btn-focus-mode");
     if (!button) {
@@ -851,6 +941,60 @@
     }
     button.textContent = state.focusMode ? "Foco on" : "Foco off";
     button.classList.toggle("active", !!state.focusMode);
+  }
+
+  function syncComposerDraftHint() {
+    var hint = q("composer-draft-hint");
+    var input = q("composer-input");
+    var room = activeRoom();
+    var raw = input ? String(input.value || "") : "";
+    if (!hint) {
+      return;
+    }
+    hint.classList.remove("has-draft");
+    hint.classList.remove("is-empty");
+    if (state.editingMessage) {
+      hint.textContent = "Editando mensagem selecionada";
+      return;
+    }
+    if (!room || isHubView()) {
+      hint.textContent = "Escolhe uma sala pra rascunhar";
+      hint.classList.add("is-empty");
+      return;
+    }
+    if (raw.trim()) {
+      hint.textContent = "Rascunho salvo local // " + raw.length + " chars";
+      hint.classList.add("has-draft");
+      return;
+    }
+    hint.textContent = "Sem rascunho salvo";
+    hint.classList.add("is-empty");
+  }
+
+  function restoreComposerDraft() {
+    var input = q("composer-input");
+    var room = activeRoom();
+    if (!input || state.editingMessage) {
+      syncComposerDraftHint();
+      return;
+    }
+    input.value = room ? loadRoomDraft(room.id) : "";
+    syncComposerDraftHint();
+  }
+
+  function persistComposerDraft() {
+    var input = q("composer-input");
+    var room = activeRoom();
+    if (!input || !room || state.editingMessage) {
+      syncComposerDraftHint();
+      return;
+    }
+    if (String(input.value || "").trim()) {
+      saveRoomDraft(room.id, input.value);
+    } else {
+      clearRoomDraft(room.id);
+    }
+    syncComposerDraftHint();
   }
 
   function appInstallLabel() {
@@ -905,6 +1049,13 @@
     if (!q("app-center-changelog-list")) {
       return;
     }
+    if (q("login-app-size-pill")) {
+      q("login-app-size-pill").textContent = UNIVERSALD_META.sizeLabel;
+    }
+    q("app-center-version-pill").textContent = UNIVERSALD_META.shortVersion;
+    q("app-center-build-copy").textContent = UNIVERSALD_META.version;
+    q("app-center-sha-copy").textContent = "SHA " + UNIVERSALD_META.sha256.slice(0, 16) + "...";
+    q("app-center-size-copy").textContent = UNIVERSALD_META.sizeLabel;
     q("app-center-protocol-pill").textContent = "universald://";
     q("app-center-changelog-list").innerHTML = UNIVERSALD_META.changelog.map(function(item) {
       return "<li>" + esc(item) + "</li>";
@@ -1623,6 +1774,10 @@
   }
 
   function applyBootstrap(bootstrap) {
+    var preferredRoomId;
+    var preferredNavId;
+    var preferredRoom;
+    var preferredNav;
     state.viewer = bootstrap.viewer;
     state.rooms = bootstrap.rooms || [];
     state.roomAccess = bootstrap.roomAccess || {};
@@ -1640,12 +1795,34 @@
     state.appsNotesDraft = loadAppsNotes();
     state.favoriteNavIds = loadFavoriteNavIds();
     state.focusMode = loadFocusMode();
+    preferredRoomId = loadStoredActiveRoomId();
+    preferredNavId = loadStoredActiveNavId();
     syncPendingAttachmentAlias();
     q("room-filter-input").value = state.roomSearch;
+    preferredRoom = preferredRoomId ? roomById(preferredRoomId) : null;
+    if (!roomById(state.activeRoomId) && preferredRoom) {
+      state.activeRoomId = preferredRoom.id;
+    }
     if (!roomById(state.activeRoomId)) {
       state.activeRoomId = pickDefaultRoomId();
     }
-    state.activeNavId = navIdForRoom(roomById(state.activeRoomId));
+    if (hasPrimaryNavId(preferredNavId)) {
+      preferredNav = navDefinition(preferredNavId);
+      if (preferredNav.id === "members") {
+        state.activeNavId = "members";
+        state.activeRoomId = 0;
+      } else if (preferredNav.id === "diretas" && !primaryDirectRoom()) {
+        state.activeNavId = "diretas";
+        state.activeRoomId = 0;
+      } else if (navRoom(preferredNav)) {
+        state.activeNavId = preferredNav.id;
+        state.activeRoomId = navRoom(preferredNav).id;
+      } else {
+        state.activeNavId = navIdForRoom(roomById(state.activeRoomId));
+      }
+    } else {
+      state.activeNavId = navIdForRoom(roomById(state.activeRoomId));
+    }
     applyTheme();
     requestNotificationsPermission();
     renderShell();
@@ -1688,6 +1865,7 @@
     renderInspectorTabs();
     renderTypingIndicator();
     renderMediaPreview();
+    syncComposerDraftHint();
     syncDocumentTitle();
     syncPeekButtons();
   }
@@ -2012,6 +2190,7 @@
     q("btn-attach").disabled = composerDisabled || state.sendingMessage;
     q("btn-ai").classList.toggle("hidden", room.slug !== "nego-dramias-ia");
     q("btn-ai").disabled = composerDisabled || state.sendingMessage || hasUploadingPendingUploads() || hasErroredPendingUploads();
+    syncComposerDraftHint();
   }
 
   function renderDashboard() {
@@ -3085,6 +3264,8 @@
     state.activeRoomId = Number(roomId);
     state.activeNavId = navIdForRoom(activeRoom());
     state.highlightMessageId = Number(highlightMessageId || 0);
+    saveStoredActiveRoomId(state.activeRoomId);
+    saveStoredActiveNavId(state.activeNavId);
     renderRooms();
     renderRails();
     renderHeaderAndRoomState();
@@ -3096,6 +3277,7 @@
     renderUnreadBanner();
     renderPendingAttachment();
     renderReplyChip();
+    restoreComposerDraft();
     renderAdminPanels();
     await loadMessages(roomId, silent);
     await loadPolls(roomId, true);
@@ -3113,9 +3295,11 @@
     state.editingMessage = null;
     state.activeNavId = nav.id;
     state.highlightMessageId = 0;
+    saveStoredActiveNavId(state.activeNavId);
     nudgeConversation();
     if (nav.kind === "members" || (nav.kind === "dm" && !room)) {
       state.activeRoomId = 0;
+      saveStoredActiveRoomId(0);
       renderRooms();
       renderRails();
       renderHeaderAndRoomState();
@@ -3127,6 +3311,7 @@
       renderUnreadBanner();
       renderPendingAttachment();
       renderReplyChip();
+      restoreComposerDraft();
       renderMessages(0);
       renderFiles();
       state.polls = [];
@@ -3265,6 +3450,7 @@
         });
         replaceRoomMessage(room.id, edited.message);
         q("composer-input").value = "";
+        clearRoomDraft(room.id);
         state.editingMessage = null;
         renderEditChip();
         renderHeaderAndRoomState();
@@ -3286,6 +3472,7 @@
         markRoomActivity(room.id, aiData.reply);
         delete state.latestUnreadByRoom[String(room.id)];
         q("composer-input").value = "";
+        clearRoomDraft(room.id);
         state.replyTarget = null;
         state.editingMessage = null;
         stopTyping(false);
@@ -3344,6 +3531,7 @@
       state.editingMessage = null;
       delete state.latestUnreadByRoom[String(room.id)];
       q("composer-input").value = "";
+      clearRoomDraft(room.id);
       stopTyping(false);
       renderPendingAttachment();
       renderReplyChip();
@@ -3377,11 +3565,15 @@
     }
     if (input === "/clear") {
       q("composer-input").value = "";
+      if (room) {
+        clearRoomDraft(room.id);
+      }
       state.replyTarget = null;
       state.pendingUploads = [];
       state.pendingAttachment = null;
       renderPendingAttachment();
       renderReplyChip();
+      syncComposerDraftHint();
       stopTyping(true);
       return;
     }
@@ -4340,7 +4532,9 @@
   }
 
   function handleTypingInput() {
-    var value = q("composer-input").value.trim();
+    var raw = q("composer-input").value || "";
+    var value = raw.trim();
+    persistComposerDraft();
     if (!value) {
       stopTyping(false);
       return;
@@ -4415,6 +4609,7 @@
     renderReplyChip();
     renderEditChip();
     renderHeaderAndRoomState();
+    syncComposerDraftHint();
     q("composer-input").focus();
   }
 
@@ -4439,6 +4634,7 @@
     renderReplyChip();
     renderEditChip();
     renderHeaderAndRoomState();
+    syncComposerDraftHint();
     q("composer-input").focus();
   }
 
@@ -4780,9 +4976,25 @@
       closeInspector();
     });
     window.addEventListener("keydown", function(event) {
+      var tag = String(event.target && event.target.tagName || "").toLowerCase();
+      var typingField = tag === "input" || tag === "textarea" || tag === "select" || !!(event.target && event.target.isContentEditable);
       if ((event.ctrlKey || event.metaKey) && String(event.key || "").toLowerCase() === "k") {
         event.preventDefault();
         setInspectorTab("search");
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && String(event.key || "") === ".") {
+        if (!typingField) {
+          event.preventDefault();
+          q("composer-input").focus();
+        }
+        return;
+      }
+      if (!typingField && !event.ctrlKey && !event.metaKey && !event.altKey && event.key === "/") {
+        event.preventDefault();
+        setInspectorTab("search");
+        q("inspector-search-input").focus();
+        q("inspector-search-input").select();
         return;
       }
       if (event.key === "Escape") {

@@ -51,7 +51,7 @@
             <button id="btn-login-guide" class="btn btn-ghost" type="button">Central do App</button>
             <span class="ghost-pill">Windows app oficial</span>
             <span id="login-app-status-pill" class="ghost-pill">app nao detectado</span>
-            <span class="ghost-pill">14 MB</span>
+            <span id="login-app-size-pill" class="ghost-pill">16 MB</span>
           </div>
         </section>
 
@@ -261,13 +261,16 @@
 
               <div class="composer-shell">
                 <textarea id="composer-input" rows="4" placeholder="Manda mensagem, usa /help, responde alguem ou sobe um anexo..."></textarea>
-
-              <div class="composer-actions">
-                <div class="composer-left">
-                  <button id="btn-attach" type="button" class="btn btn-ghost">Anexar</button>
-                  <button id="btn-ai" type="button" class="btn btn-ghost hidden">Perguntar pro Nego Dramias</button>
-                    <span id="composer-upload-hint" class="composer-hint">/help /logs /matrix /online</span>
+                <div class="composer-meta-row">
+                  <span id="composer-upload-hint" class="composer-hint">/help /logs /matrix /online</span>
+                  <span id="composer-draft-hint" class="composer-hint">Sem rascunho salvo</span>
                 </div>
+
+                <div class="composer-actions">
+                  <div class="composer-left">
+                    <button id="btn-attach" type="button" class="btn btn-ghost">Anexar</button>
+                    <button id="btn-ai" type="button" class="btn btn-ghost hidden">Perguntar pro Nego Dramias</button>
+                  </div>
 
                   <button id="btn-send" type="submit" class="btn btn-primary">Enviar</button>
                 </div>
@@ -633,7 +636,7 @@
           <div class="inline-row">
             <span id="app-center-install-pill" class="ghost-pill">app nao detectado</span>
             <span id="app-center-protocol-pill" class="ghost-pill">universald://</span>
-            <span id="app-center-version-pill" class="ghost-pill">v3.1.0</span>
+                <span id="app-center-version-pill" class="ghost-pill">v3.1.2</span>
           </div>
           <div class="inline-row">
             <button id="btn-app-center-open" class="btn btn-primary" type="button">Abrir no app</button>
@@ -650,13 +653,13 @@
 
         <article class="info-card">
           <span>Build atual</span>
-          <strong id="app-center-build-copy">3.1.0-desktop-native</strong>
-          <p id="app-center-sha-copy">SHA 3C9FF84A0EA4...</p>
+                <strong id="app-center-build-copy">3.1.2-desktop-native</strong>
+                <p id="app-center-sha-copy">SHA 4BB44335F95D...</p>
         </article>
 
         <article class="info-card">
           <span>Pacote</span>
-          <strong id="app-center-size-copy">14.55 MB</strong>
+                <strong id="app-center-size-copy">16.13 MB</strong>
           <p id="app-center-origin-copy">Distribuido pela base oficial do Painel Dief.</p>
         </article>
 

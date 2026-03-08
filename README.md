@@ -103,6 +103,12 @@ $env:UNIVERSALD_OPS_TOKEN="teu-token"
 powershell -ExecutionPolicy Bypass -File .\scripts\smoke-production.ps1
 ```
 
+QA pass consolidado site + desktop:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\qa-pass.ps1
+```
+
 Resumo operacional:
 
 ```powershell
