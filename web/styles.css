@@ -987,6 +987,7 @@ body.sidebar-collapsed #channel-panel {
   overflow: auto;
   padding-right: 0.2rem;
   border-right: 1px solid rgba(255, 255, 255, 0.03);
+  scrollbar-width: thin;
 }
 
 .primary-nav {
@@ -1010,6 +1011,11 @@ body.sidebar-collapsed #channel-panel {
   cursor: pointer;
   display: block;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.room-item:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 64%, white);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .room-item::before {
@@ -1478,6 +1484,7 @@ body.sidebar-collapsed #channel-panel {
   gap: 0.55rem;
   justify-content: flex-start;
   align-items: stretch;
+  min-width: 0;
 }
 
 .topbar-actions .btn {
@@ -2502,6 +2509,7 @@ body.focus-mode #btn-sidebar-open {
   justify-content: space-between;
   gap: 0.8rem;
   align-items: center;
+  min-width: 0;
 }
 
 .composer-left {
@@ -3225,6 +3233,9 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     z-index: 46;
     width: min(var(--sidebar-width), calc(100vw - 1.6rem));
     transition: transform 220ms ease, opacity 220ms ease;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .dashboard-tip-card {
@@ -3272,28 +3283,28 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   #channel-panel {
     left: 0.8rem;
     transform: translateX(-115%);
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
   }
 
   #inspector-panel {
     right: 0.8rem;
     width: min(var(--drawer-width), calc(100vw - 1.6rem));
     transform: translateX(115%);
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
   }
 
   body.compact.sidebar-open #channel-panel,
   body.mobile.sidebar-open #channel-panel {
     transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   body.compact.inspector-open #inspector-panel,
   body.mobile.inspector-open #inspector-panel {
     transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   body.compact #btn-sidebar-open,
@@ -3383,6 +3394,23 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     flex: 1 1 auto;
   }
 
+  .room-title-copy strong,
+  .room-title-copy span {
+    white-space: normal;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+  }
+
+  .room-title-copy strong {
+    -webkit-line-clamp: 2;
+    line-height: 1.28;
+  }
+
+  .room-title-copy span {
+    -webkit-line-clamp: 2;
+  }
+
   .topbar-utility-strip {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -3466,6 +3494,17 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.85rem;
   }
 
+  .room-item {
+    padding: 0.68rem 0.72rem;
+  }
+
+  .room-item .room-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    font-size: 1rem;
+  }
+
   .topbar-main,
   .topbar-actions {
     padding: 0.8rem;
@@ -3545,6 +3584,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     display: grid;
   }
 
+  .composer-actions > * {
+    min-width: 0;
+  }
+
   .topbar-utility-strip,
   .topbar-actions,
   .social-actions,
@@ -3572,6 +3615,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     left: 0.8rem;
     right: 0.8rem;
     width: auto;
+    padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
   }
 
   .presence-item {
@@ -3641,12 +3685,23 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.72rem 0.75rem;
   }
 
+  .topbar-utility-strip {
+    margin-inline: -0.1rem;
+    padding-inline: 0.1rem;
+  }
+
   .room-header-top {
     gap: 0.65rem;
   }
 
   .room-copy {
     min-width: 0;
+  }
+
+  .room-pill-row,
+  .dashboard-quickline {
+    margin-inline: -0.1rem;
+    padding-inline: 0.1rem;
   }
 }
 
@@ -3673,6 +3728,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .composer-shell textarea {
     min-height: 80px;
     max-height: 18dvh;
+  }
+
+  #conversation-panel {
+    gap: 0.65rem;
   }
 }
 
@@ -3719,5 +3778,19 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .composer-shell textarea {
     min-height: 76px;
     max-height: 16dvh;
+  }
+
+  #panel-view {
+    padding: 0.7rem;
+  }
+
+  #workspace {
+    gap: 0.65rem;
+  }
+
+  #channel-panel,
+  #inspector-panel {
+    top: 0.7rem;
+    bottom: 0.7rem;
   }
 }

@@ -1970,6 +1970,20 @@
     q("btn-inspector-peek").classList.toggle("hidden", !document.body.classList.contains("inspector-collapsed"));
   }
 
+  function ensureActiveNavVisible() {
+    var active = document.querySelector(".room-item.active");
+    if (!active || typeof active.scrollIntoView !== "function") {
+      return;
+    }
+    window.requestAnimationFrame(function() {
+      try {
+        active.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+      } catch (e) {
+        active.scrollIntoView();
+      }
+    });
+  }
+
   function openSidebar() {
     if (!state.compactLayout) {
       document.body.classList.remove("sidebar-collapsed");
@@ -2509,6 +2523,7 @@
     syncComposerDraftHint();
     syncDocumentTitle();
     syncPeekButtons();
+    ensureActiveNavVisible();
   }
 
   function renderViewer() {
