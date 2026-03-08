@@ -1022,6 +1022,35 @@ func (s *Service) SaveUpload(user model.PanelUser, filename, contentType string,
 	}, nil
 }
 
+func (s *Service) CanAccessUpload(user model.PanelUser, sessionID, uploadURL string) (bool, error) {
+	uploadURL = strings.TrimSpace(uploadURL)
+	if uploadURL == "" || !strings.HasPrefix(uploadURL, "/uploads/") {
+		return false, nil
+	}
+	if isPrivileged(user.Role) {
+		return true, nil
+	}
+	rooms, access, err := s.visibleRooms(user, sessionID)
+	if err != nil {
+		return false, err
+	}
+	roomIDs := roomIDsByAccess(rooms, access, true)
+	if len(roomIDs) > 0 {
+		referenced, err := s.store.HasPanelAttachmentInRooms(uploadURL, roomIDs)
+		if err != nil {
+			return false, err
+		}
+		if referenced {
+			return true, nil
+		}
+	}
+	avatarReferenced, err := s.store.HasPanelAvatar(uploadURL)
+	if err != nil {
+		return false, err
+	}
+	return avatarReferenced, nil
+}
+
 func (s *Service) RunTerminal(actor model.PanelUser, command string) (model.PanelTerminalResult, error) {
 	if !isPrivileged(actor.Role) {
 		return model.PanelTerminalResult{}, errors.New("terminal liberado so para admin/owner")

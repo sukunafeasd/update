@@ -1003,6 +1003,37 @@ func (s *Store) IsPanelUserBlocked(blockerID, blockedID int64) (bool, error) {
 	return count > 0, nil
 }
 
+func (s *Store) HasPanelAttachmentInRooms(uploadURL string, roomIDs []int64) (bool, error) {
+	uploadURL = strings.TrimSpace(uploadURL)
+	roomIDs = uniqueInt64s(roomIDs)
+	if uploadURL == "" || len(roomIDs) == 0 {
+		return false, nil
+	}
+	query, args := roomFilterQuery(`
+SELECT COUNT(1)
+FROM panel_messages
+WHERE room_id IN (%s) AND attachment_json LIKE ?`, roomIDs, "%\"url\":\""+uploadURL+"\"%")
+	row := s.db.QueryRow(query, args...)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("check panel attachment in rooms: %w", err)
+	}
+	return count > 0, nil
+}
+
+func (s *Store) HasPanelAvatar(uploadURL string) (bool, error) {
+	uploadURL = strings.TrimSpace(uploadURL)
+	if uploadURL == "" {
+		return false, nil
+	}
+	row := s.db.QueryRow(`SELECT COUNT(1) FROM panel_users WHERE avatar_url = ?`, uploadURL)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("check panel avatar upload: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (s *Store) TogglePanelReaction(messageID, userID int64, emoji string) error {
 	if messageID <= 0 || userID <= 0 {
 		return errors.New("reacao invalida")

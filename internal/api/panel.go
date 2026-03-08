@@ -998,7 +998,7 @@ func writePanelCookie(w http.ResponseWriter, r *http.Request, session model.Pane
 		Value:    session.ID,
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Secure:   isSecureRequest(r),
 		Expires:  session.ExpiresAt,
 	})
@@ -1010,7 +1010,7 @@ func clearPanelCookie(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Secure:   isSecureRequest(r),
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,

@@ -275,8 +275,11 @@ func (s *Server) handleUniversalDDownload(w http.ResponseWriter, r *http.Request
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": "universalD.exe"}))
+	appendVary(w.Header(), "Cookie", "X-Panel-Session")
 	http.ServeContent(w, r, "universalD.exe", time.Time{}, bytes.NewReader(payload))
 }
 
@@ -325,7 +328,7 @@ func writeDownloadCookie(w http.ResponseWriter, r *http.Request, secret string) 
 		Value:    downloadCookieValue(secret),
 		Path:     "/downloads/",
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Secure:   isSecureRequest(r),
 		Expires:  time.Now().UTC().Add(12 * time.Hour),
 	})
@@ -442,8 +445,8 @@ func (s *Server) uploadsHandler() http.Handler {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if !s.hasValidPanelSession(r) {
-			writeError(w, http.StatusUnauthorized, fmt.Errorf("login necessario"))
+		viewer, _, sessionID, ok := s.requirePanelAuth(w, r)
+		if !ok {
 			return
 		}
 
@@ -456,6 +459,15 @@ func (s *Server) uploadsHandler() http.Handler {
 		name := filepath.Base(rawName)
 		if name == "." || name == "" {
 			http.NotFound(w, r)
+			return
+		}
+		allowed, err := s.panelSvc.CanAccessUpload(viewer, sessionID, "/uploads/"+name)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		if !allowed {
+			writeError(w, http.StatusForbidden, fmt.Errorf("acesso negado a esse upload"))
 			return
 		}
 

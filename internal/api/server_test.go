@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"universald/internal/db"
+	"universald/internal/model"
 	"universald/internal/panel"
 )
 
@@ -201,6 +202,76 @@ func TestUploadsHandlerRequiresPanelAuth(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 without panel session for upload, got %d", w.Code)
+	}
+}
+
+func TestUploadsHandlerBlocksRoomRestrictedUploadForMember(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("PAINEL_DIEF_OWNER_PASSWORD", "TesteOwner#2026")
+
+	store, err := db.Open(filepath.Join(root, "server-upload-room.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	owner, ownerSession, err := panelSvc.Login("dief", "TesteOwner#2026")
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+	member, err := panelSvc.CreateUser(owner, "membro-upload", "membro-upload@paineldief.local", "Member#2026", "Membro Upload", "member")
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+	_, memberSession, err := panelSvc.Login(member.Username, "Member#2026")
+	if err != nil {
+		t.Fatalf("login member: %v", err)
+	}
+
+	rooms, err := store.ListPanelRooms()
+	if err != nil {
+		t.Fatalf("list rooms: %v", err)
+	}
+	var appsLab model.PanelRoom
+	for _, room := range rooms {
+		if room.Slug == "apps-lab" {
+			appsLab = room
+			break
+		}
+	}
+	if appsLab.ID == 0 {
+		t.Fatalf("expected apps-lab room")
+	}
+
+	attachment, err := panelSvc.SaveUpload(owner, "sigilo.txt", "text/plain", strings.NewReader("segredo admin"))
+	if err != nil {
+		t.Fatalf("save upload: %v", err)
+	}
+	if _, err := panelSvc.PostMessage(owner, ownerSession.ID, appsLab.ID, "arquivo admin", "text", &attachment, 0); err != nil {
+		t.Fatalf("post admin message with upload: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{})
+
+	memberReq := httptest.NewRequest(http.MethodGet, attachment.URL, nil)
+	memberReq.AddCookie(&http.Cookie{Name: panelSessionCookie, Value: memberSession.ID})
+	memberRes := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(memberRes, memberReq)
+	if memberRes.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for member on restricted upload, got %d", memberRes.Code)
+	}
+
+	ownerReq := httptest.NewRequest(http.MethodGet, attachment.URL, nil)
+	ownerReq.AddCookie(&http.Cookie{Name: panelSessionCookie, Value: ownerSession.ID})
+	ownerRes := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(ownerRes, ownerReq)
+	if ownerRes.Code != http.StatusOK {
+		t.Fatalf("expected 200 for owner on restricted upload, got %d", ownerRes.Code)
 	}
 }
 
@@ -532,6 +603,37 @@ func TestEmbeddedDownloadRouteRequiresAccess(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 for protected embedded download, got %d", w.Code)
+	}
+}
+
+func TestEmbeddedDownloadRouteDisablesCaching(t *testing.T) {
+	srv := NewPanelServer("", "1.4.4", true, nil, ServerOptions{DownloadPassword: "segredo-app"})
+
+	accessReq := httptest.NewRequest(http.MethodPost, "/api/downloads/universald/access", strings.NewReader(`{"password":"segredo-app"}`))
+	accessReq.Header.Set("Content-Type", "application/json")
+	accessRes := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(accessRes, accessReq)
+	if accessRes.Code != http.StatusOK {
+		t.Fatalf("expected 200 when unlocking app download, got %d", accessRes.Code)
+	}
+	cookies := accessRes.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("expected download access cookie to be set")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/downloads/universalD.exe", nil)
+	req.AddCookie(cookies[0])
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for protected embedded download, got %d", w.Code)
+	}
+	if got := w.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Fatalf("expected private no-store download policy, got %q", got)
+	}
+	if got := w.Header().Get("Vary"); !strings.Contains(got, "Cookie") || !strings.Contains(got, "X-Panel-Session") {
+		t.Fatalf("expected vary headers for protected download, got %q", got)
 	}
 }
 
