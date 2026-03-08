@@ -4458,7 +4458,7 @@
       });
       closeModal("join-request-modal");
       q("login-error").classList.remove("hidden");
-      q("login-error").textContent = data.message || "Pedido enviado pro dono revisar.";
+      q("login-error").textContent = data.message || "Pedido enviado. Se o dono aprovar, o codigo vai pro gmail ou sai manualmente por ele.";
       pulseClass(q("login-view").querySelector(".login-stage"), "login-success-pulse");
       playTone("ok");
     } catch (err) {
@@ -4498,7 +4498,7 @@
       q("login-input").value = payload.username;
       q("password-input").value = payload.password;
       q("login-error").classList.remove("hidden");
-      q("login-error").textContent = data.message || "Acesso criado. Agora entra no painel.";
+      q("login-error").textContent = data.message || "Acesso criado. Agora entra no painel com teu usuario novo.";
       pulseClass(q("login-view").querySelector(".login-stage"), "login-success-pulse");
       playTone("ok");
     } catch (err) {
@@ -4840,7 +4840,13 @@
       });
       syncBootstrapSnapshot(await apiFetch("/api/panel/bootstrap"));
       await loadJoinRequests(true);
-      toast(data.message || "Pedido revisado.", approve ? "ok" : "warn");
+      if (approve) {
+        toast((data.request && data.request.emailSent)
+          ? "Pedido aprovado e codigo mandado pro gmail cadastrado."
+          : "Pedido aprovado. O codigo ficou contigo pra passar manualmente.", "ok");
+      } else {
+        toast(data.message || "Pedido recusado com estilo debochado.", "warn");
+      }
     } catch (err) {
       toast(err.message, "err");
     }
