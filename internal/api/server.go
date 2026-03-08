@@ -347,7 +347,12 @@ func decodeJSON(body io.ReadCloser, target any) error {
 }
 
 func writeError(w http.ResponseWriter, status int, err error) {
-	payload := map[string]any{"error": err.Error()}
+	message := strings.TrimSpace(err.Error())
+	if status >= http.StatusInternalServerError {
+		message = "erro interno do painel"
+		log.Printf("api error status=%d request=%s detail=%v", status, requestIDFromResponse(w), err)
+	}
+	payload := map[string]any{"error": message}
 	if requestID := requestIDFromResponse(w); requestID != "-" {
 		payload["requestId"] = requestID
 	}
@@ -408,8 +413,17 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 		case strings.HasPrefix(path, "/api/"):
 			headers.Set("Cache-Control", "no-store")
 			headers.Set("Pragma", "no-cache")
+			headers.Set("Expires", "0")
+			appendVary(headers, "Cookie", "X-Panel-Session", "Authorization")
+		case strings.HasPrefix(path, "/uploads/"):
+			headers.Set("Cache-Control", "private, no-store")
+			headers.Set("Pragma", "no-cache")
+			headers.Set("Expires", "0")
+			appendVary(headers, "Cookie", "X-Panel-Session")
 		case path == "/" || strings.HasSuffix(path, ".html"):
 			headers.Set("Cache-Control", "no-store")
+			headers.Set("Pragma", "no-cache")
+			headers.Set("Expires", "0")
 		case strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js"):
 			headers.Set("Cache-Control", "no-cache")
 		}
@@ -426,6 +440,10 @@ func (s *Server) uploadsHandler() http.Handler {
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if !s.hasValidPanelSession(r) {
+			writeError(w, http.StatusUnauthorized, fmt.Errorf("login necessario"))
 			return
 		}
 
@@ -466,8 +484,47 @@ func (s *Server) uploadsHandler() http.Handler {
 		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Content-Disposition", disposition)
 		w.Header().Set("Accept-Ranges", "bytes")
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		appendVary(w.Header(), "Cookie", "X-Panel-Session")
 		http.ServeContent(w, r, name, info.ModTime(), file)
 	})
+}
+
+func appendVary(headers http.Header, values ...string) {
+	if headers == nil || len(values) == 0 {
+		return
+	}
+	current := map[string]bool{}
+	for _, part := range strings.Split(headers.Get("Vary"), ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			current[strings.ToLower(part)] = true
+		}
+	}
+	ordered := make([]string, 0, len(current)+len(values))
+	for _, part := range strings.Split(headers.Get("Vary"), ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			ordered = append(ordered, part)
+		}
+	}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if current[key] {
+			continue
+		}
+		current[key] = true
+		ordered = append(ordered, value)
+	}
+	if len(ordered) > 0 {
+		headers.Set("Vary", strings.Join(ordered, ", "))
+	}
 }
 
 func uploadResponseMeta(name string, head []byte) (string, string) {

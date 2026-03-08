@@ -37,8 +37,37 @@ func TestHandlerSetsSecurityHeadersOnRoot(t *testing.T) {
 	if got := w.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("expected no-store for root html, got %q", got)
 	}
+	if got := w.Header().Get("Pragma"); got != "no-cache" {
+		t.Fatalf("expected no-cache pragma for root html, got %q", got)
+	}
 	if got := w.Header().Get("Content-Security-Policy"); !strings.Contains(got, "default-src 'self'") {
 		t.Fatalf("expected CSP header, got %q", got)
+	}
+}
+
+func TestAPIHeadersDisableCachingAndVaryBySession(t *testing.T) {
+	staticDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<!doctype html><html><body>ok</body></html>"), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	srv := &Server{staticDir: staticDir}
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if got := w.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("expected no-store for api route, got %q", got)
+	}
+	if got := w.Header().Get("Pragma"); got != "no-cache" {
+		t.Fatalf("expected no-cache pragma for api route, got %q", got)
+	}
+	if got := w.Header().Get("Expires"); got != "0" {
+		t.Fatalf("expected expires 0 for api route, got %q", got)
+	}
+	if got := w.Header().Get("Vary"); !strings.Contains(got, "Cookie") || !strings.Contains(got, "X-Panel-Session") || !strings.Contains(got, "Authorization") {
+		t.Fatalf("expected vary headers for session-aware api route, got %q", got)
 	}
 }
 
@@ -114,8 +143,19 @@ func TestUploadsHandlerServesDangerousFilesAsDownloadSafeText(t *testing.T) {
 		t.Fatalf("write upload: %v", err)
 	}
 
-	srv := &Server{panelSvc: panel.NewService(store, uploadsDir)}
+	t.Setenv("PAINEL_DIEF_OWNER_PASSWORD", "TesteOwner#2026")
+	panelSvc := panel.NewService(store, uploadsDir)
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+	_, session, err := panelSvc.Login("dief", "TesteOwner#2026")
+	if err != nil {
+		t.Fatalf("login owner: %v", err)
+	}
+
+	srv := &Server{panelSvc: panelSvc}
 	req := httptest.NewRequest(http.MethodGet, "/uploads/evil.html", nil)
+	req.AddCookie(&http.Cookie{Name: panelSessionCookie, Value: session.ID})
 	w := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(w, req)
@@ -128,6 +168,39 @@ func TestUploadsHandlerServesDangerousFilesAsDownloadSafeText(t *testing.T) {
 	}
 	if got := w.Header().Get("Content-Disposition"); !strings.Contains(strings.ToLower(got), "attachment") {
 		t.Fatalf("expected attachment disposition, got %q", got)
+	}
+	if got := w.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Fatalf("expected private no-store cache policy, got %q", got)
+	}
+	if got := w.Header().Get("Vary"); !strings.Contains(got, "Cookie") || !strings.Contains(got, "X-Panel-Session") {
+		t.Fatalf("expected vary headers for uploads, got %q", got)
+	}
+}
+
+func TestUploadsHandlerRequiresPanelAuth(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "server-upload-auth.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	uploadsDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(uploadsDir, "private.png"), []byte("fake"), 0o644); err != nil {
+		t.Fatalf("write upload: %v", err)
+	}
+
+	panelSvc := panel.NewService(store, uploadsDir)
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+	srv := &Server{panelSvc: panelSvc}
+	req := httptest.NewRequest(http.MethodGet, "/uploads/private.png", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without panel session for upload, got %d", w.Code)
 	}
 }
 
@@ -145,6 +218,23 @@ func TestRequestIDHeaderIsAlwaysPresent(t *testing.T) {
 
 	if strings.TrimSpace(w.Header().Get("X-Request-ID")) == "" {
 		t.Fatalf("expected X-Request-ID header to be set")
+	}
+}
+
+func TestWriteErrorSanitizesInternalFailures(t *testing.T) {
+	w := httptest.NewRecorder()
+	w.Header().Set("X-Request-ID", "req-test")
+
+	writeError(w, http.StatusInternalServerError, os.ErrPermission)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "permission") {
+		t.Fatalf("expected internal error detail to be hidden, got %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "erro interno do painel") {
+		t.Fatalf("expected generic internal error message, got %s", w.Body.String())
 	}
 }
 
