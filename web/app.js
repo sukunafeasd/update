@@ -47,17 +47,19 @@
   ];
   var APP_DOWNLOAD_URL = "/downloads/universalD.exe";
   var UNIVERSALD_META = {
-    version: "3.1.0-desktop-native",
-    shortVersion: "v3.1.0",
-    sizeLabel: "14.55 MB",
-    sha256: "3C9FF84A0EA47C79BDA8E2EE7BAE8504716DBC2145D0C75C8EEBEC5EDB76C097",
+    version: "3.1.1-desktop-native",
+    shortVersion: "v3.1.1",
+    sizeLabel: "16.12 MB",
+    sha256: "53983C2F80483F3FD04C3EDCFFB61B68917FF5843B92390D4C5F855F4A095613",
     changelog: [
-      "Login do app desktop limpo, sem senha exposta e com ajuste melhor pra janela menor.",
+      "Login do app desktop refeito em modo compatível com o motor nativo do exe.",
+      "Sessão do painel agora tem fallback local para sobreviver melhor a reload e cookie ruim.",
+      "Ícone do app regenerado da arte nova e empacotado também como .ico real.",
       "Registro nativo do protocolo universald:// pra abrir a base direto do site.",
-      "Abertura do app reaproveita a instancia em execucao em vez de largar outra solta.",
       "Build privado renovado e pronto pra baixar com senha pela base oficial."
     ]
   };
+  var SESSION_STORAGE_KEY = "painelDiefSessionId";
   var THEME_PRESETS = {
     matrix: { label: "Matrix", accent: "#7bff00" },
     obsidian: { label: "Obsidian", accent: "#90a6ff" },
@@ -121,6 +123,29 @@
     appInstalled: false,
     appInstallSeenAt: 0
   };
+
+  function readStoredSessionId() {
+    try {
+      return String(window.localStorage.getItem(SESSION_STORAGE_KEY) || "").trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function storeSessionId(sessionId) {
+    var clean = String(sessionId || "").trim();
+    try {
+      if (!clean) {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+        return;
+      }
+      window.localStorage.setItem(SESSION_STORAGE_KEY, clean);
+    } catch (e) {}
+  }
+
+  function clearStoredSessionId() {
+    storeSessionId("");
+  }
 
   function q(id) {
     return document.getElementById(id);
@@ -1442,9 +1467,13 @@
   async function apiFetch(path, options) {
     var opts = options || {};
     var headers = opts.headers || {};
+    var storedSessionId = readStoredSessionId();
     var isFormData = typeof FormData !== "undefined" && opts.body instanceof FormData;
     if (!isFormData && !headers["Content-Type"]) {
       headers["Content-Type"] = "application/json";
+    }
+    if (storedSessionId && !headers["X-Panel-Session"]) {
+      headers["X-Panel-Session"] = storedSessionId;
     }
     var response = await fetch(path, {
       method: opts.method || "GET",
@@ -1459,6 +1488,7 @@
     if (!response.ok) {
       var requestId = response.headers.get("X-Request-ID") || (data && data.requestId) || "";
       if (response.status === 401 && path !== "/api/panel/login") {
+        clearStoredSessionId();
         resetSession();
       }
       var err = new Error((data && data.error) || "falha inesperada");
@@ -1493,6 +1523,7 @@
   }
 
   function resetSession() {
+    clearStoredSessionId();
     state.viewer = null;
     state.rooms = [];
     state.roomAccess = {};
@@ -1562,6 +1593,9 @@
   async function tryBootstrap() {
     try {
       var bootstrap = await apiFetch("/api/panel/bootstrap");
+      if (bootstrap && bootstrap.sessionId) {
+        storeSessionId(bootstrap.sessionId);
+      }
       applyBootstrap(bootstrap);
       showPanel();
     } catch (err) {
@@ -3141,6 +3175,7 @@
         method: "POST",
         body: JSON.stringify({ login: login, password: password })
       });
+      storeSessionId(data && data.sessionId);
       q("login-input").value = "";
       q("password-input").value = "";
       q("login-error").classList.add("hidden");
@@ -3171,6 +3206,7 @@
       await apiFetch("/api/panel/logout", { method: "POST", body: JSON.stringify({}) });
     } catch (err) {}
     setButtonBusy(button, false, "Saindo...", "Sair");
+    clearStoredSessionId();
     resetSession();
     showLogin("Tu saiu do painel.");
   }

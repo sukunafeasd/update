@@ -111,6 +111,7 @@ type PanelPresence struct {
 }
 
 type PanelBootstrap struct {
+	SessionID      string            `json:"sessionId,omitempty"`
 	Viewer         PanelUser         `json:"viewer"`
 	Rooms          []PanelRoom       `json:"rooms"`
 	Online         []PanelPresence   `json:"online"`

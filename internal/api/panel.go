@@ -174,6 +174,7 @@ func (s *Server) handlePanelLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":        true,
 		"message":   "Acesso liberado ao Painel Dief.",
+		"sessionId": session.ID,
 		"bootstrap": bootstrap,
 	})
 }
@@ -209,6 +210,7 @@ func (s *Server) handlePanelBootstrap(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	bootstrap.SessionID = sessionID
 	writeJSON(w, http.StatusOK, bootstrap)
 }
 
