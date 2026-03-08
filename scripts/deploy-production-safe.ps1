@@ -3,6 +3,7 @@ param(
   [string]$OpsToken = $env:UNIVERSALD_OPS_TOKEN,
   [string]$RenderApiKey = $env:RENDER_API_KEY,
   [string]$RenderServiceId = $env:RENDER_SERVICE_ID,
+  [string]$OwnerPassword = $env:PAINEL_DIEF_OWNER_PASSWORD,
   [int]$WaitTimeoutSec = 900
 )
 
@@ -70,4 +71,7 @@ $opsHeaders = @{
 Invoke-RestMethod -Method Post -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/import") -Headers $opsHeaders -InFile $backupPath -ContentType "application/zip" | Out-Null
 
 Write-Host "[5/5] smoke final"
+if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
+  $env:PAINEL_DIEF_OWNER_PASSWORD = $OwnerPassword
+}
 & powershell -ExecutionPolicy Bypass -File $smokeScript -BaseUrl $BaseUrl -OpsToken $OpsToken -MutatingChecks
