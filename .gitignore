@@ -6,6 +6,7 @@
 *.db-shm
 *.db-wal
 *.exe
+!web/downloads/*.exe
 *.log
 .env
 .env.*

@@ -314,3 +314,18 @@ func TestOpsExportStreamsBackupArchive(t *testing.T) {
 		t.Fatalf("expected database snapshot in zip")
 	}
 }
+
+func TestEmbeddedDownloadRouteServesUniversalD(t *testing.T) {
+	srv := NewPanelServer("", "1.4.4", true, nil, ServerOptions{})
+	req := httptest.NewRequest(http.MethodGet, "/downloads/universalD.exe", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for embedded download, got %d", w.Code)
+	}
+	if bodyLen := w.Body.Len(); bodyLen < 1024 {
+		t.Fatalf("expected download body larger than 1KB, got %d bytes", bodyLen)
+	}
+}

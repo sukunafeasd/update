@@ -470,6 +470,50 @@ pre,
   background: rgba(255, 85, 117, 0.09);
 }
 
+.login-download-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 92%, transparent), color-mix(in srgb, var(--surface) 88%, transparent)),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 14%, transparent), transparent 48%);
+}
+
+.login-download-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.login-download-copy strong {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.login-download-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.login-download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.btn-download {
+  text-decoration: none;
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), rgba(255, 255, 255, 0.02));
+}
+
+.btn-download:hover {
+  text-decoration: none;
+}
+
 .login-footer {
   display: grid;
   gap: 1rem;
@@ -2226,6 +2270,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 @media (max-width: 760px) {
   #login-view {
     padding: 1rem;
+  }
+
+  .login-download-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   #conversation-panel {
