@@ -358,6 +358,12 @@
     return value.toFixed(index === 0 ? 0 : 1) + " " + units[index];
   }
 
+  function totalAttachmentBytes(items) {
+    return (items || []).reduce(function(sum, item) {
+      return sum + Number(item && item.attachment && item.attachment.sizeBytes || 0);
+    }, 0);
+  }
+
   function pickRandom(items) {
     if (!items || !items.length) {
       return "";
@@ -1303,12 +1309,24 @@
     }
   }
 
+  function renderContextEmptyCard(title, copy, pillsMarkup, actionsMarkup) {
+    return "<article class='context-empty-card'>" +
+      "<div class='context-empty-copy'>" +
+        "<strong>" + esc(title || "Sem conteudo ainda") + "</strong>" +
+        "<p>" + esc(copy || "Essa area ainda esta quieta.") + "</p>" +
+      "</div>" +
+      (pillsMarkup ? "<div class='context-empty-pills'>" + pillsMarkup + "</div>" : "") +
+      (actionsMarkup ? "<div class='context-empty-actions'>" + actionsMarkup + "</div>" : "") +
+    "</article>";
+  }
+
   function renderDirectHubDeck() {
     var wrap = q("direct-hub-deck");
     var rooms;
     var unreadTotal;
     var onlinePeers;
     var hottest;
+    var summaryActions;
     if (!wrap) {
       return;
     }
@@ -1320,8 +1338,13 @@
     rooms = directRoomsSorted();
     wrap.classList.remove("hidden");
     if (!rooms.length) {
-      wrap.innerHTML =
-        "<div class='empty-state'>Ainda nao existe DM aberta. Vai em membros, escolhe alguem e puxa a primeira conversa.</div>";
+      wrap.innerHTML = renderContextEmptyCard(
+        "Diretas vazias",
+        "Ainda nao existe DM aberta. Vai em membros, escolhe alguem e puxa a primeira conversa privada da base.",
+        "<span class='ghost-pill'>pv</span><span class='ghost-pill'>1x1</span><span class='ghost-pill'>sem plateia</span>",
+        "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='members'>Ver membros</button>" +
+        "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='search'>Abrir busca</button>"
+      );
       return;
     }
     unreadTotal = rooms.reduce(function(sum, room) {
@@ -1332,7 +1355,20 @@
       return !!(peer && peer.online);
     }).length;
     hottest = rooms[0];
+    summaryActions =
+      "<span class='ghost-pill'>" + rooms.length + " conversas</span>" +
+      "<span class='ghost-pill'>" + onlinePeers + " online</span>" +
+      "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='members'>Membros</button>" +
+      "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='search'>Busca</button>";
     wrap.innerHTML =
+      "<div class='context-deck-head'>" +
+        "<div class='context-deck-copy'>" +
+          "<span class='eyebrow'>diretas</span>" +
+          "<strong>Conversas privadas vivas</strong>" +
+          "<p>Retoma rapido quem te chamou, quem esta online e onde a conversa esquentou.</p>" +
+        "</div>" +
+        "<div class='context-deck-actions'>" + summaryActions + "</div>" +
+      "</div>" +
       "<div class='direct-hub-summary'>" +
         "<article class='insight-card'><span>diretas</span><strong>" + rooms.length + "</strong><p>conversas privadas abertas</p></article>" +
         "<article class='insight-card'><span>na fila</span><strong>" + unreadTotal + "</strong><p>mensagens novas te esperando</p></article>" +
@@ -1347,6 +1383,7 @@
           var statusCopy = personStatusCopy(peer);
           var liveCopy = peer && peer.online ? (peer.status || "online") : "offline";
           var preview = latest.body || (latest.attachment ? "[anexo] " + latest.attachment.name : "Sem mensagem recente.");
+          var latestType = latest.attachment ? (latest.attachment.kind || "anexo") : "texto";
           return "<article class='direct-card'>" +
             "<div class='direct-card-head'>" +
               directPeerAvatarMarkup(room) +
@@ -1357,11 +1394,16 @@
               (unread ? "<span class='ghost-pill'>" + unread + " novas</span>" : "<span class='ghost-pill'>" + esc(room.lastMessageAt ? formatRelative(room.lastMessageAt) : "sem rastro") + "</span>") +
             "</div>" +
             "<div class='direct-card-copy'>" +
-              "<strong>" + esc(peer && peer.roomId ? "na base agora" : "ultimas trocas") + "</strong>" +
+              "<strong>" + esc(peer && peer.online ? "na base agora" : "ultimas trocas") + "</strong>" +
               "<p>" + esc(preview.slice(0, 140)) + "</p>" +
             "</div>" +
+            "<div class='inline-row direct-card-meta'>" +
+              "<span class='ghost-pill'>" + esc(latestType) + "</span>" +
+              "<span class='ghost-pill'>" + esc(room.lastMessageAt ? formatRelative(room.lastMessageAt) : "sem rastro") + "</span>" +
+            "</div>" +
             "<div class='inline-row'>" +
-              "<button class='btn btn-ghost' type='button' data-room-id='" + Number(room.id) + "'>" + (unread ? "Voltar pras novas" : "Abrir DM") + "</button>" +
+              "<button class='btn btn-ghost' type='button' data-action='jump-room' data-room-id='" + Number(room.id) + "'>" + (unread ? "Voltar pras novas" : "Abrir DM") + "</button>" +
+              "<button class='btn btn-ghost' type='button' data-action='focus-composer'>Responder</button>" +
               "<button class='btn btn-ghost' type='button' data-action='open-user-profile' data-user-id='" + Number(room.peerUserId || 0) + "'>Perfil</button>" +
             "</div>" +
           "</article>";
@@ -1373,6 +1415,7 @@
     var wrap = q("room-spotlight");
     var room = activeRoom();
     var attachments;
+    var sectionLabel;
     if (!wrap) {
       return;
     }
@@ -1383,11 +1426,30 @@
     }
     attachments = filteredRoomAttachments().slice(0, 3);
     wrap.classList.remove("hidden");
+    sectionLabel = room && room.slug === "fotos" ? "galeria" : "biblioteca";
     if (!attachments.length) {
-      wrap.innerHTML = "<div class='empty-state'>Essa area ainda nao tem midia em destaque. Solta foto, video ou arquivo e a vitrine acorda.</div>";
+      wrap.innerHTML = renderContextEmptyCard(
+        "Vitrine vazia",
+        "Essa area ainda nao tem midia em destaque. Solta foto, video ou arquivo e a vitrine acorda.",
+        "<span class='ghost-pill'>" + esc(sectionLabel) + "</span><span class='ghost-pill'>midia</span>",
+        "<button class='btn btn-ghost' type='button' data-action='trigger-attach'>Anexar agora</button>" +
+        "<button class='btn btn-ghost' type='button' data-action='focus-composer'>Escrever junto</button>"
+      );
       return;
     }
     wrap.innerHTML =
+      "<div class='context-deck-head'>" +
+        "<div class='context-deck-copy'>" +
+          "<span class='eyebrow'>" + esc(sectionLabel) + "</span>" +
+          "<strong>Midia em destaque da sala</strong>" +
+          "<p>As ultimas pecas que mais representam essa area agora.</p>" +
+        "</div>" +
+        "<div class='context-deck-actions'>" +
+          "<span class='ghost-pill'>" + attachments.length + " na vitrine</span>" +
+          "<span class='ghost-pill'>" + esc(bytesLabel(totalAttachmentBytes(attachments))) + "</span>" +
+          "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='files'>Biblioteca</button>" +
+        "</div>" +
+      "</div>" +
       "<div class='spotlight-grid'>" +
         attachments.map(function(message) {
           var attachment = message.attachment;
@@ -3757,6 +3819,7 @@
     var total = currentRoomAttachments().length;
     var summary = q("media-summary");
     var room = activeRoom();
+    var totalBytes = totalAttachmentBytes(currentRoomAttachments());
     renderRoomSpotlight();
     q("media-search-input").value = state.mediaSearch;
     q("media-sort-select").value = state.mediaSort;
@@ -3769,7 +3832,13 @@
       if (summary) {
         summary.textContent = "Seleciona uma sala real para abrir a biblioteca de midia.";
       }
-      list.innerHTML = "<div class='empty-state'>Seleciona uma sala de chat para ver a midia dela.</div>";
+      list.innerHTML = renderContextEmptyCard(
+        "Biblioteca sem sala",
+        "Seleciona uma sala de chat para ver a midia dela e abrir a biblioteca do recorte certo.",
+        "<span class='ghost-pill'>midia</span><span class='ghost-pill'>por sala</span>",
+        "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='members'>Membros</button>" +
+        "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='search'>Busca</button>"
+      );
       return;
     }
     if (isAppsLabRoom(activeRoom())) {
@@ -3778,7 +3847,12 @@
       if (summary) {
         summary.textContent = "Apps Lab agora virou central do UniversalD. Sem biblioteca de midia misturada aqui.";
       }
-      list.innerHTML = "<div class='empty-state'>Usa essa area para abrir, baixar e atualizar o app oficial.</div>";
+      list.innerHTML = renderContextEmptyCard(
+        "Apps Lab dedicado",
+        "Usa essa area para abrir, baixar e atualizar o app oficial, sem biblioteca de midia misturada aqui.",
+        "<span class='ghost-pill'>app only</span><span class='ghost-pill'>central</span>",
+        "<button class='btn btn-ghost' type='button' data-action='open-app-center'>Central do App</button>"
+      );
       return;
     }
     q("files-status-pill").textContent = attachments.length + " / " + total + " itens";
@@ -3791,10 +3865,16 @@
       list.classList.add("file-mode");
     }
     if (summary) {
-      summary.textContent = (room && room.slug === "fotos" ? "Galeria viva" : "Biblioteca da sala") + " // filtro " + (state.mediaFilter === "all" ? "geral" : state.mediaFilter) + " // ordem " + mediaSortLabel(state.mediaSort) + " // " + attachments.length + " visiveis";
+      summary.textContent = (room && room.slug === "fotos" ? "Galeria viva" : "Biblioteca da sala") + " // filtro " + (state.mediaFilter === "all" ? "geral" : state.mediaFilter) + " // ordem " + mediaSortLabel(state.mediaSort) + " // " + attachments.length + " visiveis // peso " + bytesLabel(totalBytes);
     }
     if (!attachments.length) {
-      list.innerHTML = "<div class='empty-state'>Nenhum anexo bate com esse filtro nessa sala. Tenta limpar a busca ou trocar a ordem.</div>";
+      list.innerHTML = renderContextEmptyCard(
+        "Nada bateu no filtro",
+        "Nenhum anexo bate com esse filtro nessa sala. Tenta limpar a busca, trocar a ordem ou mandar novo conteudo.",
+        "<span class='ghost-pill'>" + esc(state.mediaFilter === "all" ? "geral" : state.mediaFilter) + "</span><span class='ghost-pill'>" + esc(mediaSortLabel(state.mediaSort)) + "</span>",
+        "<button class='btn btn-ghost' type='button' data-action='trigger-attach'>Mandar arquivo</button>" +
+        "<button class='btn btn-ghost' type='button' data-action='focus-composer'>Abrir composer</button>"
+      );
       return;
     }
     attachments.forEach(function(message) {
@@ -6278,6 +6358,21 @@
         jumpToMessage(Number(target.getAttribute("data-room-id")), Number(target.getAttribute("data-message-id")));
       } else if (action === "jump-unread") {
         jumpToMessage(Number(target.getAttribute("data-room-id")), Number(target.getAttribute("data-message-id")));
+      } else if (action === "focus-composer") {
+        if (q("composer-form").classList.contains("hidden")) {
+          toast("Abre uma conversa liberada antes de responder, vivente.", "warn");
+        } else {
+          q("composer-input").focus();
+          q("composer-input").scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+      } else if (action === "trigger-attach") {
+        if (q("composer-form").classList.contains("hidden")) {
+          toast("Essa area nao aceita anexo agora. Abre uma sala liberada primeiro.", "warn");
+        } else {
+          q("attachment-input").click();
+        }
+      } else if (action === "open-app-center") {
+        openAppCenterModal();
       } else if (action === "toggle-event-rsvp") {
         toggleEventRSVP(Number(target.getAttribute("data-event-id")));
       } else if (action === "vote-poll") {

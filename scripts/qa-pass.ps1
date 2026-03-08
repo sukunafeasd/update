@@ -27,7 +27,15 @@ if (Test-Path $siteExe) {
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "[3/5] smoke production"
-& powershell -ExecutionPolicy Bypass -File (Join-Path $siteRoot "scripts\smoke-production.ps1") -BaseUrl $ProductionUrl
+$productionSmokeArgs = @(
+  "-ExecutionPolicy", "Bypass",
+  "-File", (Join-Path $siteRoot "scripts\smoke-production.ps1"),
+  "-BaseUrl", $ProductionUrl
+)
+if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
+  $env:PAINEL_DIEF_OWNER_PASSWORD = $OwnerPassword
+}
+& powershell @productionSmokeArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if ($IncludeDesktop -and (Test-Path $DesktopProject)) {

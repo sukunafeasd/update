@@ -1652,6 +1652,51 @@ body.focus-mode #btn-sidebar-open {
   padding-right: 0.15rem;
 }
 
+.context-deck-head,
+.context-deck-actions,
+.context-empty-pills,
+.context-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.context-deck-head {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.context-deck-copy,
+.context-empty-copy {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.context-deck-copy strong,
+.context-empty-copy strong {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.context-deck-copy p,
+.context-empty-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.context-empty-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px dashed var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
 .direct-hub-grid,
 .spotlight-grid,
 .members-insights {
@@ -1681,6 +1726,10 @@ body.focus-mode #btn-sidebar-open {
 .spotlight-card {
   display: grid;
   gap: 0.72rem;
+}
+
+.direct-card-meta {
+  margin-top: -0.15rem;
 }
 
 .direct-card-head,
@@ -3267,6 +3316,21 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .media-toolbar-actions {
     grid-template-columns: 1fr;
+  }
+
+  .context-deck-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .context-deck-actions,
+  .context-empty-actions {
+    width: 100%;
+  }
+
+  .context-deck-actions .btn,
+  .context-empty-actions .btn {
+    flex: 1 1 160px;
   }
 
   .media-list.file-mode .media-card {
