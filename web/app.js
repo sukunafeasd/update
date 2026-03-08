@@ -172,6 +172,49 @@
     return document.getElementById(id);
   }
 
+  function syncViewportMetrics() {
+    var root = document.documentElement;
+    var viewport = window.visualViewport || null;
+    var width = viewport && viewport.width ? viewport.width : window.innerWidth;
+    var height = viewport && viewport.height ? viewport.height : window.innerHeight;
+    var keyboardOffset = Math.max(0, Math.round(window.innerHeight - height));
+    if (!root) {
+      return;
+    }
+    root.style.setProperty("--viewport-width", Math.max(320, Math.round(width)) + "px");
+    root.style.setProperty("--viewport-height", Math.max(320, Math.round(height)) + "px");
+    root.style.setProperty("--keyboard-offset", keyboardOffset + "px");
+    document.body.classList.toggle("keyboard-open", keyboardOffset > 120);
+  }
+
+  var layoutRefreshRaf = 0;
+
+  function scheduleLayoutRefresh() {
+    if (layoutRefreshRaf) {
+      return;
+    }
+    layoutRefreshRaf = window.requestAnimationFrame(function() {
+      layoutRefreshRaf = 0;
+      syncViewportMetrics();
+      detectMobile();
+    });
+  }
+
+  function ensureFieldVisible(target) {
+    if (!target || !(state.compactLayout || state.isMobile)) {
+      return;
+    }
+    window.setTimeout(function() {
+      try {
+        target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      } catch (err) {
+        try {
+          target.scrollIntoView();
+        } catch (e) {}
+      }
+    }, 120);
+  }
+
   function isPanelSessionManagedPath(path) {
     var clean = String(path || "").trim();
     return /^\/api\/panel\//.test(clean) && clean !== "/api/panel/login";
@@ -1918,9 +1961,11 @@
 
   function detectMobile() {
     var agent = String((window.navigator && window.navigator.userAgent) || "").toLowerCase();
+    var viewport = window.visualViewport || null;
+    var layoutWidth = viewport && viewport.width ? viewport.width : window.innerWidth;
     var wasCompact = !!state.compactLayout;
-    state.isMobile = window.innerWidth <= 820 || /android|iphone|ipad|mobile|opera mini|windows phone/.test(agent);
-    state.compactLayout = state.isMobile || window.innerWidth <= 1080;
+    state.isMobile = layoutWidth <= 820 || /android|iphone|ipad|mobile|opera mini|windows phone/.test(agent);
+    state.compactLayout = state.isMobile || layoutWidth <= 1080;
     document.body.classList.toggle("mobile", state.isMobile);
     document.body.classList.toggle("compact", state.compactLayout);
     if (state.compactLayout) {
@@ -6094,8 +6139,20 @@
   }
 
   function bindEvents() {
+    syncViewportMetrics();
     detectMobile();
-    window.addEventListener("resize", detectMobile);
+    window.addEventListener("resize", scheduleLayoutRefresh);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", scheduleLayoutRefresh);
+      window.visualViewport.addEventListener("scroll", scheduleLayoutRefresh);
+    }
+    document.addEventListener("focusin", function(event) {
+      var target = event.target;
+      var tag = String(target && target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || !!(target && target.isContentEditable)) {
+        ensureFieldVisible(target);
+      }
+    });
     q("login-form").addEventListener("submit", handleLogin);
     q("btn-login-open-app").addEventListener("click", function() {
       tryOpenUniversalD({ source: "login", fallbackToDownload: true });

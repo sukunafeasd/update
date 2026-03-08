@@ -2,6 +2,9 @@
   --font-ui: "Sora", sans-serif;
   --font-display: "Orbitron", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --viewport-width: 100vw;
+  --viewport-height: 100dvh;
+  --keyboard-offset: 0px;
   --bg: #06100c;
   --bg-alt: #0b1712;
   --surface: rgba(11, 20, 16, 0.86);
@@ -98,7 +101,7 @@ body {
     radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent-strong) 10%, transparent), transparent 28%),
     linear-gradient(135deg, var(--bg), var(--bg-alt));
-  min-height: 100dvh;
+  min-height: var(--viewport-height);
   overflow: hidden;
   color-scheme: dark;
 }
@@ -475,7 +478,7 @@ pre,
   display: grid;
   gap: 0.75rem;
   width: min(360px, calc(100vw - 2rem));
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(var(--viewport-height) - 2rem);
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -543,7 +546,7 @@ pre,
 }
 
 #login-view {
-  min-height: 100dvh;
+  min-height: var(--viewport-height);
   display: grid;
   place-items: center;
   padding: 2rem;
@@ -555,7 +558,7 @@ pre,
 .login-shell {
   width: min(520px, 100%);
   display: grid;
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(var(--viewport-height) - 2rem);
   margin-inline: auto;
   align-content: center;
 }
@@ -564,7 +567,7 @@ pre,
   display: grid;
   gap: 1.35rem;
   padding: 2rem;
-  max-height: min(calc(100dvh - 2rem), 920px);
+  max-height: min(calc(var(--viewport-height) - 2rem), 920px);
   overflow: auto;
   scrollbar-gutter: stable both-edges;
 }
@@ -732,8 +735,30 @@ pre,
   animation: login-pass 520ms ease;
 }
 
+body.keyboard-open #login-view {
+  align-items: start;
+}
+
+body.keyboard-open.compact #topbar {
+  position: static;
+}
+
+body.keyboard-open.compact #panel-view {
+  overflow: auto;
+  padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+}
+
+body.keyboard-open.compact #composer-form {
+  position: static;
+  padding-bottom: calc(0.2rem + env(safe-area-inset-bottom, 0px));
+}
+
+body.keyboard-open.compact .composer-shell textarea {
+  max-height: 22dvh;
+}
+
 #panel-view {
-  height: 100dvh;
+  height: var(--viewport-height);
   padding: 1rem;
   overflow: hidden;
 }
@@ -2805,7 +2830,7 @@ body.inspector-collapsed #inspector-panel {
   padding: 1.3rem;
   display: grid;
   gap: 1rem;
-  max-height: min(calc(100dvh - 2rem), 900px);
+  max-height: min(calc(var(--viewport-height) - 2rem), 900px);
   overflow: auto;
 }
 
@@ -3610,7 +3635,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     top: 0.65rem;
     bottom: 0.65rem;
     height: auto;
-    max-height: calc(100dvh - 1.3rem);
+    max-height: calc(var(--viewport-height) - 1.3rem);
   }
 
   .message-card {
@@ -3691,7 +3716,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .login-shell {
     width: 100%;
-    max-height: calc(100dvh - 0.75rem);
+    max-height: calc(var(--viewport-height) - 0.75rem);
   }
 
   .login-card {
@@ -3758,7 +3783,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-shell {
-    max-height: calc(100dvh - 1rem);
+    max-height: calc(var(--viewport-height) - 1rem);
   }
 
   .login-card {
@@ -3788,13 +3813,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-shell {
-    max-height: calc(100dvh - 0.7rem);
+    max-height: calc(var(--viewport-height) - 0.7rem);
   }
 
   .login-card {
     gap: 0.8rem;
     padding: 1rem;
-    max-height: calc(100dvh - 0.7rem);
+    max-height: calc(var(--viewport-height) - 0.7rem);
   }
 
   .login-download-card {
@@ -3817,7 +3842,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .modal-card {
-    max-height: calc(100dvh - 1.4rem);
+    max-height: calc(var(--viewport-height) - 1.4rem);
     padding: 1rem;
   }
 
