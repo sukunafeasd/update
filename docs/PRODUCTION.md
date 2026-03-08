@@ -40,6 +40,8 @@ Publicar o `Painel Dief` com URL fixa, HTTPS, banco persistente, uploads persist
 - `UNIVERSALD_BACKUP_RETENTION_DAYS=14`
 - `UNIVERSALD_MAINTENANCE_INTERVAL_SEC=60`
 
+Na blueprint atual da Render, `UNIVERSALD_OPS_TOKEN` ja pode ser gerado automaticamente no primeiro deploy.
+
 ## Fluxo recomendado
 
 1. Subir o repositorio em um host Git.

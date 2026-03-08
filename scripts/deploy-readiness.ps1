@@ -55,6 +55,10 @@ $renderFile = Join-Path $Root "render.yaml"
 $stagingFile = Join-Path $Root "render.staging.yaml"
 $productionDoc = Join-Path $Root "docs\PRODUCTION.md"
 $preflightOrigin = $PublicOrigin
+$renderBlueprintText = ""
+if (Test-Path $renderFile) {
+  $renderBlueprintText = Get-Content $renderFile -Raw
+}
 
 Add-CheckResult -List $results -Name "projectRoot" -Ok (Test-Path $Root) -Detail $Root
 Add-CheckResult -List $results -Name "dockerfile" -Ok (Test-Path $dockerfile) -Detail $dockerfile
@@ -99,12 +103,19 @@ if (-not $gitRemoteOk) {
 }
 
 $opsTokenSet = -not [string]::IsNullOrWhiteSpace($env:UNIVERSALD_OPS_TOKEN)
+$opsTokenBlueprint = $false
+if ($Provider -eq "render" -and $renderBlueprintText -match 'UNIVERSALD_OPS_TOKEN' -and $renderBlueprintText -match 'generateValue:\s*true') {
+  $opsTokenBlueprint = $true
+}
+$opsTokenOk = $opsTokenSet -or $opsTokenBlueprint
 $opsDetail = "token nao definido no ambiente atual"
 if ($opsTokenSet) {
   $opsDetail = "token carregado por ambiente"
+} elseif ($opsTokenBlueprint) {
+  $opsDetail = "token sera gerado automaticamente pela blueprint do Render"
 }
-Add-CheckResult -List $results -Name "opsToken" -Ok $opsTokenSet -Detail $opsDetail
-if (-not $opsTokenSet) {
+Add-CheckResult -List $results -Name "opsToken" -Ok $opsTokenOk -Detail $opsDetail
+if (-not $opsTokenOk) {
   $missing.Add("Definir um UNIVERSALD_OPS_TOKEN forte no provedor de hospedagem.") | Out-Null
 }
 
@@ -140,6 +151,19 @@ Add-CheckResult -List $results -Name "provider" -Ok $providerOk -Detail $Provide
 if (-not $providerOk) {
   $missing.Add("Escolher um provedor de hospedagem com disco persistente.") | Out-Null
 }
+
+$providerAccessOk = $true
+$providerAccessDetail = "acesso ao provedor nao verificado"
+if ($Provider -eq "render") {
+  $providerAccessOk = -not [string]::IsNullOrWhiteSpace($env:RENDER_API_KEY)
+  if ($providerAccessOk) {
+    $providerAccessDetail = "RENDER_API_KEY carregado no ambiente"
+  } else {
+    $providerAccessDetail = "RENDER_API_KEY nao encontrado; deploy automatico daqui ainda bloqueado"
+    $missing.Add("Fornecer acesso ao Render por login no navegador ou RENDER_API_KEY para concluir a URL fixa daqui.") | Out-Null
+  }
+}
+Add-CheckResult -List $results -Name "providerAccess" -Ok $providerAccessOk -Detail $providerAccessDetail
 
 $goPath = Resolve-ToolPath -Name "go"
 $goAvailable = -not [string]::IsNullOrWhiteSpace($goPath)

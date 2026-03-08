@@ -24,6 +24,8 @@ services:
         value: "14"
       - key: UNIVERSALD_MAINTENANCE_INTERVAL_SEC
         value: "60"
+      - key: UNIVERSALD_OPS_TOKEN
+        generateValue: true
       - key: UNIVERSALD_OPEN
         value: "false"
       - key: UNIVERSALD_SAFE_MODE
