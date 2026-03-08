@@ -432,6 +432,7 @@ func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
 	importReq := httptest.NewRequest(http.MethodPost, "/api/ops/import", bytes.NewReader(exportRec.Body.Bytes()))
 	importReq.RemoteAddr = "198.51.100.20:443"
 	importReq.Header.Set("Authorization", "Bearer ops-secret")
+	importReq.Header.Set("Content-Type", "application/zip")
 	importRec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(importRec, importReq)
 	if importRec.Code != http.StatusOK {
@@ -447,6 +448,69 @@ func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
 	}
 	if _, err := store.GetPanelUserByLogin("restore-alvo"); err == nil {
 		t.Fatalf("expected imported snapshot to remove extra user")
+	}
+}
+
+func TestOpsImportRequiresTokenOutsideLoopback(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-import-auth.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "production",
+		DBPath:   filepath.Join(root, "server-import-auth.db"),
+		OpsToken: "ops-secret",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/ops/import", bytes.NewReader([]byte("fake zip")))
+	req.RemoteAddr = "198.51.100.20:443"
+	req.Header.Set("Content-Type", "application/zip")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 without ops token, got %d", w.Code)
+	}
+}
+
+func TestOpsImportRejectsUnexpectedContentType(t *testing.T) {
+	root := t.TempDir()
+	store, err := db.Open(filepath.Join(root, "server-import-type.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	panelSvc := panel.NewService(store, filepath.Join(root, "uploads"))
+	if err := panelSvc.EnsureBootstrapped(); err != nil {
+		t.Fatalf("bootstrap panel: %v", err)
+	}
+
+	srv := NewPanelServer("", "1.4.4", true, panelSvc, ServerOptions{
+		AppEnv:   "production",
+		DBPath:   filepath.Join(root, "server-import-type.db"),
+		OpsToken: "ops-secret",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/ops/import", bytes.NewReader([]byte("{}")))
+	req.RemoteAddr = "198.51.100.20:443"
+	req.Header.Set("Authorization", "Bearer ops-secret")
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("expected 415 for wrong content type, got %d", w.Code)
 	}
 }
 

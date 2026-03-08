@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"mime"
 	"net/http"
 	"time"
 )
@@ -18,6 +19,18 @@ func (s *Server) handleOpsImport(w http.ResponseWriter, r *http.Request) {
 	if !s.authorizeOpsRequest(r) {
 		writeError(w, http.StatusForbidden, fmt.Errorf("acesso ops negado"))
 		return
+	}
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "" {
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("content-type invalido"))
+			return
+		}
+		if mediaType != "application/zip" && mediaType != "application/octet-stream" {
+			writeError(w, http.StatusUnsupportedMediaType, fmt.Errorf("ops import aceita apenas backup zip"))
+			return
+		}
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 512<<20)
 	if err := s.panelSvc.RestoreBackupArchive(r.Body, "ops-import"); err != nil {

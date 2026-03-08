@@ -1,5 +1,6 @@
 param(
   [string]$BaseUrl = "https://update-wrl6.onrender.com",
+  [string]$Password = "",
   [string]$OpsToken = $env:UNIVERSALD_OPS_TOKEN,
   [switch]$MutatingChecks
 )
@@ -14,6 +15,9 @@ $args = @(
   "-File", $smokeScript,
   "-BaseUrl", $BaseUrl
 )
+if (-not [string]::IsNullOrWhiteSpace($Password)) {
+  $args += @("-Password", $Password)
+}
 if (-not [string]::IsNullOrWhiteSpace($OpsToken)) {
   $args += @("-OpsToken", $OpsToken)
 }

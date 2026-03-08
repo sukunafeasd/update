@@ -74,4 +74,8 @@ Write-Host "[5/5] smoke final"
 if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
   $env:PAINEL_DIEF_OWNER_PASSWORD = $OwnerPassword
 }
-& powershell -ExecutionPolicy Bypass -File $smokeScript -BaseUrl $BaseUrl -OpsToken $OpsToken -MutatingChecks
+if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
+  & powershell -ExecutionPolicy Bypass -File $smokeScript -BaseUrl $BaseUrl -Password $OwnerPassword -OpsToken $OpsToken -MutatingChecks
+} else {
+  & powershell -ExecutionPolicy Bypass -File $smokeScript -BaseUrl $BaseUrl -OpsToken $OpsToken -MutatingChecks
+}
