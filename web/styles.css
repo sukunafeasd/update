@@ -87,6 +87,7 @@ html,
 body {
   min-height: 100%;
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -100,6 +101,14 @@ body {
   min-height: 100dvh;
   overflow: hidden;
   color-scheme: dark;
+}
+
+body.login-mode {
+  overflow: auto;
+}
+
+body.panel-mode {
+  overflow: hidden;
 }
 
 a {
@@ -539,12 +548,16 @@ pre,
   place-items: center;
   padding: 2rem;
   overflow: auto;
+  width: 100%;
+  scrollbar-gutter: stable both-edges;
 }
 
 .login-shell {
   width: min(520px, 100%);
   display: grid;
   max-height: calc(100dvh - 2rem);
+  margin-inline: auto;
+  align-content: center;
 }
 
 .login-card {
@@ -553,6 +566,7 @@ pre,
   padding: 2rem;
   max-height: min(calc(100dvh - 2rem), 920px);
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .login-stage {
@@ -663,10 +677,16 @@ pre,
   flex-wrap: wrap;
   gap: 0.7rem;
   align-items: center;
+  justify-content: flex-start;
 }
 
 .login-download-actions .btn {
   flex: 0 1 auto;
+}
+
+.login-download-actions .ghost-pill {
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .btn-download {
@@ -715,6 +735,7 @@ pre,
 #panel-view {
   height: 100dvh;
   padding: 1rem;
+  overflow: hidden;
 }
 
 #panel-shell {
@@ -1374,6 +1395,7 @@ body.sidebar-collapsed #channel-panel {
   gap: 0.85rem;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 #topbar {
@@ -1563,6 +1585,10 @@ body.focus-mode #btn-sidebar-open {
   border-top: 1px solid var(--line);
   scrollbar-width: thin;
   align-items: center;
+}
+
+.dashboard-quickline {
+  scrollbar-width: thin;
 }
 
 .topbar-utility-strip .btn {
@@ -2753,6 +2779,7 @@ body.inspector-collapsed #inspector-panel {
   place-items: center;
   padding: 1rem;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-card {
@@ -3361,6 +3388,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     overflow-x: auto;
   }
 
+  .dashboard-quickline {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.15rem;
+  }
+
   .topbar-utility-strip .btn,
   .room-pill-row .badge,
   .dashboard-quickline .ghost-pill {
@@ -3410,6 +3444,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .login-download-actions .btn {
     width: 100%;
+  }
+
+  .login-download-actions .ghost-pill {
+    width: 100%;
+    justify-content: center;
   }
 
   .direct-hub-grid,
@@ -3559,6 +3598,58 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 }
 
+@media (max-width: 560px) {
+  #login-view {
+    padding: 0.75rem;
+  }
+
+  .login-shell {
+    width: 100%;
+    max-height: calc(100dvh - 0.75rem);
+  }
+
+  .login-card {
+    gap: 0.95rem;
+    padding: 1rem;
+    border-radius: 20px;
+  }
+
+  .login-brand strong {
+    font-size: clamp(1.7rem, 9vw, 2.5rem);
+  }
+
+  .login-download-card {
+    padding: 0.9rem;
+    gap: 0.8rem;
+  }
+
+  .login-download-copy strong {
+    font-size: 0.98rem;
+  }
+
+  .login-footer {
+    gap: 0.75rem;
+    padding-top: 0.95rem;
+  }
+
+  .boot-lines {
+    font-size: 0.76rem;
+  }
+
+  .topbar-main,
+  .topbar-actions {
+    padding: 0.72rem 0.75rem;
+  }
+
+  .room-header-top {
+    gap: 0.65rem;
+  }
+
+  .room-copy {
+    min-width: 0;
+  }
+}
+
 @media (max-height: 820px) {
   #login-view {
     padding: 1rem;
@@ -3582,5 +3673,51 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .composer-shell textarea {
     min-height: 80px;
     max-height: 18dvh;
+  }
+}
+
+@media (max-height: 700px) {
+  #login-view {
+    padding: 0.7rem;
+    align-items: start;
+  }
+
+  .login-shell {
+    max-height: calc(100dvh - 0.7rem);
+  }
+
+  .login-card {
+    gap: 0.8rem;
+    padding: 1rem;
+    max-height: calc(100dvh - 0.7rem);
+  }
+
+  .login-download-card {
+    gap: 0.7rem;
+    padding: 0.9rem;
+  }
+
+  .login-footer {
+    gap: 0.7rem;
+    padding-top: 0.85rem;
+  }
+
+  .boot-lines {
+    font-size: 0.74rem;
+  }
+
+  .modal {
+    place-items: start center;
+    padding: 0.7rem;
+  }
+
+  .modal-card {
+    max-height: calc(100dvh - 1.4rem);
+    padding: 1rem;
+  }
+
+  .composer-shell textarea {
+    min-height: 76px;
+    max-height: 16dvh;
   }
 }

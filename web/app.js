@@ -2250,11 +2250,23 @@
     return data;
   }
 
+  function setViewMode(mode) {
+    var body = document.body;
+    if (!body) {
+      return;
+    }
+    body.classList.toggle("login-mode", mode === "login");
+    body.classList.toggle("panel-mode", mode === "panel");
+  }
+
   function showLogin(message) {
+    setViewMode("login");
     q("login-view").classList.remove("hidden");
     q("panel-view").classList.add("hidden");
     document.title = "Painel Dief";
     q("login-view").querySelector(".login-stage").classList.remove("login-error-pulse", "login-success-pulse");
+    q("login-view").scrollTop = 0;
+    window.scrollTo(0, 0);
     if (message) {
       q("login-error").classList.remove("hidden");
       q("login-error").textContent = message;
@@ -2262,11 +2274,24 @@
       q("login-error").classList.add("hidden");
       q("login-error").textContent = "";
     }
+    window.setTimeout(function() {
+      var loginInput = q("login-input");
+      if (!loginInput) {
+        return;
+      }
+      try {
+        loginInput.focus({ preventScroll: true });
+      } catch (e) {
+        loginInput.focus();
+      }
+    }, 40);
   }
 
   function showPanel() {
+    setViewMode("panel");
     q("login-view").classList.add("hidden");
     q("panel-view").classList.remove("hidden");
+    q("panel-view").scrollTop = 0;
     closeInspector();
     maybeOpenGuide();
     renderAppCenter();

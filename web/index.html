@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body data-theme="matrix">
+<body data-theme="matrix" class="login-mode">
   <canvas id="matrix-bg" aria-hidden="true"></canvas>
   <div id="noise-layer" aria-hidden="true"></div>
   <div id="toast-stack" aria-live="polite"></div>
@@ -30,10 +30,10 @@
 
         <form id="login-form" autocomplete="on">
           <label for="login-input">Usuario ou Gmail cadastrado</label>
-          <input id="login-input" name="login" type="text" placeholder="usuario ou email" />
+          <input id="login-input" name="login" type="text" placeholder="usuario ou email" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" />
 
           <label for="password-input">Senha</label>
-          <input id="password-input" name="password" type="password" placeholder="digita sem tremer" />
+          <input id="password-input" name="password" type="password" placeholder="digita sem tremer" autocomplete="current-password" />
 
           <button id="login-submit" type="submit" class="btn btn-primary btn-block">Entrar no Painel</button>
         </form>
