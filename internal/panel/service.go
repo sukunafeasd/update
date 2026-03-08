@@ -1445,17 +1445,18 @@ func (s *Service) Search(viewer model.PanelUser, sessionID, query string, limit 
 	return result, nil
 }
 
-func (s *Service) AskAI(viewer model.PanelUser, prompt string) string {
-	if reply, err := s.askAIExternal(viewer, prompt); err == nil && strings.TrimSpace(reply) != "" {
+func (s *Service) AskAI(viewer model.PanelUser, roomID int64, prompt string) string {
+	contextWindow := s.aiRecentContext(roomID, viewer.ID)
+	if reply, err := s.askAIExternal(viewer, roomID, prompt, contextWindow); err == nil && strings.TrimSpace(reply) != "" {
 		return strings.TrimSpace(reply)
 	}
 	if reply, err := s.askAIKnowledge(prompt); err == nil && strings.TrimSpace(reply) != "" {
 		return strings.TrimSpace(reply)
 	}
-	return s.askAIFallback(viewer, prompt)
+	return s.askAIFallback(viewer, prompt, contextWindow)
 }
 
-func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
+func (s *Service) askAIFallback(viewer model.PanelUser, prompt string, contextWindow string) string {
 	prompt = strings.TrimSpace(prompt)
 	lower := strings.ToLower(prompt)
 
@@ -1463,6 +1464,8 @@ func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
 	switch {
 	case lower == "":
 		return base + "manda a pergunta inteira que eu te explico o painel, o UniversalD ou qualquer assunto que eu pescar sem inventar moda."
+	case contextWindow != "" && (strings.Contains(lower, "resume") || strings.Contains(lower, "resumo") || strings.Contains(lower, "falamos") || strings.Contains(lower, "contexto")):
+		return base + "nessa conversa recente eu vi isso aqui: " + contextWindow
 	case strings.Contains(lower, "login") || strings.Contains(lower, "senha"):
 		return base + "tu entra com usuario ou email cadastrado pelo owner. Se errar a senha, o painel te gasta sem pena e sem choro."
 	case strings.Contains(lower, "admin") || strings.Contains(lower, "owner"):
@@ -1494,7 +1497,7 @@ func (s *Service) askAIFallback(viewer model.PanelUser, prompt string) string {
 	}
 }
 
-func (s *Service) askAIExternal(viewer model.PanelUser, prompt string) (string, error) {
+func (s *Service) askAIExternal(viewer model.PanelUser, roomID int64, prompt string, contextWindow string) (string, error) {
 	apiKey := strings.TrimSpace(os.Getenv("PAINEL_DIEF_AI_API_KEY"))
 	if apiKey == "" {
 		return "", errors.New("external ai key not configured")
@@ -1519,16 +1522,23 @@ func (s *Service) askAIExternal(viewer model.PanelUser, prompt string) (string, 
 		"Fala em português do Brasil com leve sotaque gaúcho e usa 'bah', 'tchê' ou 'vivente' com moderação.",
 		"Tu és útil, direto, engraçado e conhece o site atual: Chat Geral, Diretas, Fotos, Arquivos, Nego Dramias IA e Apps Lab privado de admin.",
 		"Explica recursos, orienta uso da plataforma, ajuda com organização da comunidade e responde sem inventar acesso que o usuário não tem.",
+		"Se o usuário perguntar algo sobre a conversa atual, usa o contexto recente recebido. Se não houver contexto útil, admite isso em vez de inventar.",
 		"Resposta curta, clara e prática. Evita textão desnecessário.",
 		fmt.Sprintf("Usuário atual: %s (%s).", strings.TrimSpace(viewer.DisplayName), strings.TrimSpace(viewer.Role)),
+		fmt.Sprintf("Sala atual ID: %d.", roomID),
 	}, " ")
 
+	messages := []map[string]string{
+		{"role": "system", "content": systemPrompt},
+	}
+	if strings.TrimSpace(contextWindow) != "" {
+		messages = append(messages, map[string]string{"role": "system", "content": "Contexto recente da sala: " + strings.TrimSpace(contextWindow)})
+	}
+	messages = append(messages, map[string]string{"role": "user", "content": strings.TrimSpace(prompt)})
+
 	payload := map[string]any{
-		"model": modelName,
-		"messages": []map[string]string{
-			{"role": "system", "content": systemPrompt},
-			{"role": "user", "content": strings.TrimSpace(prompt)},
-		},
+		"model":       modelName,
+		"messages":    messages,
 		"temperature": 0.7,
 	}
 
@@ -1579,6 +1589,31 @@ func (s *Service) askAIExternal(viewer model.PanelUser, prompt string) (string, 
 		return "", errors.New("external ai returned no choices")
 	}
 	return strings.TrimSpace(decoded.Choices[0].Message.Content), nil
+}
+
+func (s *Service) aiRecentContext(roomID, viewerID int64) string {
+	if roomID <= 0 {
+		return ""
+	}
+	items, err := s.store.ListPanelMessagesForViewer(roomID, 6, viewerID)
+	if err != nil || len(items) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(items))
+	for _, item := range items {
+		body := strings.TrimSpace(item.Body)
+		if body == "" && item.Attachment != nil {
+			body = "[anexo] " + strings.TrimSpace(item.Attachment.Name)
+		}
+		if body == "" {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("%s: %s", strings.TrimSpace(item.AuthorName), summarizeText(collapseWhitespace(body), 120)))
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, " | ")
 }
 
 func (s *Service) askAIKnowledge(prompt string) (string, error) {
@@ -1673,7 +1708,7 @@ func (s *Service) PostAIExchange(viewer model.PanelUser, sessionID string, roomI
 		AuthorID:   aiUser.ID,
 		AuthorName: "Nego Dramias",
 		AuthorRole: "ai",
-		Body:       s.AskAI(viewer, prompt),
+		Body:       s.AskAI(viewer, roomID, prompt),
 		Kind:       "text",
 		IsAI:       true,
 		ReplyToID:  userMsg.ID,

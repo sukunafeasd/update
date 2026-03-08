@@ -1686,6 +1686,61 @@ body.focus-mode #btn-sidebar-open {
   background: linear-gradient(180deg, rgba(84, 184, 255, 0.08), rgba(255, 255, 255, 0.02));
 }
 
+.dashboard-pulse,
+.profile-preview-insights {
+  margin-top: 0.2rem;
+}
+
+.direct-hub-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.direct-hub-summary .insight-card,
+.dashboard-pulse .insight-card,
+.profile-preview-insights .insight-card {
+  min-width: 0;
+}
+
+.member-shared-rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.member-shared-room {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.member-shared-room strong {
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-shared-room span {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.member-shared-room.more {
+  border-style: dashed;
+  color: var(--muted);
+}
+
 .apps-lab-deck {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3129,6 +3184,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     justify-content: stretch;
   }
 
+  .direct-hub-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .topbar-actions {
     width: 100%;
     flex-direction: row;
@@ -3203,6 +3262,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     grid-template-columns: 1fr;
   }
 
+  .direct-hub-summary {
+    grid-template-columns: 1fr;
+  }
+
   #conversation-panel {
     padding: 0.85rem;
   }
@@ -3219,6 +3282,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .profile-preview-banner,
   .member-banner {
     height: 68px;
+  }
+
+  .member-shared-room {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .room-icon {

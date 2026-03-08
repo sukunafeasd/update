@@ -853,6 +853,52 @@
     return stats;
   }
 
+  function currentViewerLocalStats() {
+    if (!state.viewer) {
+      return {
+        messageCount: 0,
+        attachmentCount: 0,
+        roomCount: 0,
+        lastMessage: null,
+        lastRoom: null
+      };
+    }
+    return memberLocalStats(state.viewer.id);
+  }
+
+  function unreadTotalCount() {
+    return Object.keys(state.unread || {}).reduce(function(sum, roomId) {
+      return sum + Number(state.unread[roomId] || 0);
+    }, 0);
+  }
+
+  function sharedVisibleRoomsForUser(userId) {
+    var map = {};
+    var list = [];
+    Object.keys(state.messagesByRoom || {}).forEach(function(roomId) {
+      var room = roomById(roomId);
+      var hasViewer = false;
+      var hasMember = false;
+      if (!room) {
+        return;
+      }
+      (state.messagesByRoom[roomId] || []).forEach(function(message) {
+        var authorId = Number(message.authorId || message.userId || 0);
+        if (authorId === Number(state.viewer && state.viewer.id)) {
+          hasViewer = true;
+        }
+        if (authorId === Number(userId)) {
+          hasMember = true;
+        }
+      });
+      if (hasViewer && hasMember && !map[String(room.id)]) {
+        map[String(room.id)] = true;
+        list.push(room);
+      }
+    });
+    return list;
+  }
+
   function dashboardQuicklineItems(room, mode, attachments) {
     var onlineNow = state.online.filter(function(item) { return item.online; });
     var chips = [];
@@ -1260,6 +1306,9 @@
   function renderDirectHubDeck() {
     var wrap = q("direct-hub-deck");
     var rooms;
+    var unreadTotal;
+    var onlinePeers;
+    var hottest;
     if (!wrap) {
       return;
     }
@@ -1275,7 +1324,21 @@
         "<div class='empty-state'>Ainda nao existe DM aberta. Vai em membros, escolhe alguem e puxa a primeira conversa.</div>";
       return;
     }
+    unreadTotal = rooms.reduce(function(sum, room) {
+      return sum + Number(state.unread[String(room.id)] || 0);
+    }, 0);
+    onlinePeers = rooms.filter(function(room) {
+      var peer = directPeerProfile(room);
+      return !!(peer && peer.online);
+    }).length;
+    hottest = rooms[0];
     wrap.innerHTML =
+      "<div class='direct-hub-summary'>" +
+        "<article class='insight-card'><span>diretas</span><strong>" + rooms.length + "</strong><p>conversas privadas abertas</p></article>" +
+        "<article class='insight-card'><span>na fila</span><strong>" + unreadTotal + "</strong><p>mensagens novas te esperando</p></article>" +
+        "<article class='insight-card'><span>online</span><strong>" + onlinePeers + "</strong><p>contatos vivos no mapa agora</p></article>" +
+        "<article class='insight-card'><span>mais quente</span><strong>" + esc(hottest ? displayRoomName(hottest) : "sem foco") + "</strong><p>" + esc(hottest && hottest.lastMessageAt ? formatRelative(hottest.lastMessageAt) : "sem troca recente") + "</p></article>" +
+      "</div>" +
       "<div class='direct-hub-grid'>" +
         rooms.slice(0, 4).map(function(room) {
           var peer = directPeerProfile(room);
@@ -1298,7 +1361,7 @@
               "<p>" + esc(preview.slice(0, 140)) + "</p>" +
             "</div>" +
             "<div class='inline-row'>" +
-              "<button class='btn btn-ghost' type='button' data-room-id='" + Number(room.id) + "'>Abrir DM</button>" +
+              "<button class='btn btn-ghost' type='button' data-room-id='" + Number(room.id) + "'>" + (unread ? "Voltar pras novas" : "Abrir DM") + "</button>" +
               "<button class='btn btn-ghost' type='button' data-action='open-user-profile' data-user-id='" + Number(room.peerUserId || 0) + "'>Perfil</button>" +
             "</div>" +
           "</article>";
@@ -1411,6 +1474,23 @@
       "<article class='insight-card'><span>admin</span><strong>" + adminCount + "</strong><p>owner + admins no mapa</p></article>" +
       "<article class='insight-card'><span>vip</span><strong>" + vipCount + "</strong><p>vip carregados no filtro</p></article>" +
       "<article class='insight-card'><span>status</span><strong>" + withStatusCount + "</strong><p>com status customizado visivel</p></article>";
+  }
+
+  function renderDashboardPulse() {
+    var wrap = q("dashboard-pulse");
+    var room = activeRoom();
+    var roomMessages = currentRoomMessages();
+    var viewerStats = currentViewerLocalStats();
+    if (!wrap) {
+      return;
+    }
+    wrap.innerHTML =
+      "<article class='insight-card'><span>nao lidas</span><strong>" + unreadTotalCount() + "</strong><p>mensagens fora da tua sala ativa</p></article>" +
+      "<article class='insight-card'><span>pedidos</span><strong>" + Number(state.pendingJoinCount || 0) + "</strong><p>gente pedindo guarida na base</p></article>" +
+      "<article class='insight-card'><span>viewer</span><strong>" + viewerStats.messageCount + "</strong><p>mensagens tuas carregadas no mapa</p></article>" +
+      "<article class='insight-card'><span>midia</span><strong>" + viewerStats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
+      "<article class='insight-card'><span>sala ativa</span><strong>" + (roomMessages.length || 0) + "</strong><p>" + esc(room ? displayRoomName(room) : "sem sala em foco") + "</p></article>" +
+      "<article class='insight-card'><span>conexao</span><strong>" + esc(state.connectionStatus || "syncing") + "</strong><p>estado atual do fluxo em tempo real</p></article>";
   }
 
   function renderAppCenter() {
@@ -2317,6 +2397,7 @@
     renderPresenceSidebar();
     renderHeaderAndRoomState();
     renderDashboard();
+    renderDashboardPulse();
     renderDirectHubDeck();
     renderRoomSpotlight();
     renderAppsLabDeck();
@@ -2562,6 +2643,8 @@
     var composerDisabled = false;
     var memberText = "";
     var hubMode = isHubView();
+
+    renderDashboardPulse();
 
     btnRoomFavorite.disabled = !state.activeNavId;
     btnRoomFavorite.textContent = isFavoriteNavId(state.activeNavId) ? "Area fixa" : "Fixar area";
@@ -3831,6 +3914,7 @@
         "</div>";
       list.appendChild(card);
     });
+    renderDashboardPulse();
   }
 
   function renderSearchResults() {
@@ -4483,6 +4567,7 @@
   function renderProfileFormPreview() {
     var avatarWrap = q("profile-preview-avatar");
     var banner = q("profile-preview-banner");
+    var insightWrap = q("profile-preview-insights");
     var avatarUrl = safeAvatarUrl(q("profile-avatar").value.trim());
     var displayName = q("profile-display").value.trim() || (state.viewer && (state.viewer.displayName || state.viewer.username)) || "Painel Dief";
     var status = q("profile-status").value || "online";
@@ -4506,6 +4591,14 @@
     q("profile-preview-status").textContent = statusText || "Sem status customizado.";
     q("profile-preview-status").classList.toggle("hidden", !statusText);
     q("profile-preview-bio").textContent = bio || "Tua bio aparece aqui antes de salvar.";
+    if (insightWrap) {
+      var stats = currentViewerLocalStats();
+      insightWrap.innerHTML =
+        "<article class='insight-card'><span>teu mapa</span><strong>" + stats.messageCount + "</strong><p>mensagens tuas visiveis agora</p></article>" +
+        "<article class='insight-card'><span>midia</span><strong>" + stats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
+        "<article class='insight-card'><span>salas</span><strong>" + stats.roomCount + "</strong><p>salas onde tua marca apareceu</p></article>" +
+        "<article class='insight-card'><span>tom</span><strong>" + esc(themeLabel(theme)) + "</strong><p>" + esc(statusText || "sem status customizado") + "</p></article>";
+    }
   }
 
   function refreshAppsNotesState(saved) {
@@ -4531,6 +4624,7 @@
     var profile = state.selectedMember;
     var avatarWrap = q("member-avatar");
     var banner = q("member-banner");
+    var sharedWrap = q("member-shared-rooms");
     var actionDM = q("member-action-dm");
     var actionBlock = q("member-action-block");
     var actionMute = q("member-action-mute");
@@ -4573,6 +4667,19 @@
       avatarWrap.innerHTML = "<img class='message-avatar profile-avatar-lg' alt='" + esc(profile.user.displayName || profile.user.username) + "' src='" + esc(memberAvatarUrl) + "' />";
     } else {
       avatarWrap.textContent = initials(profile.user.displayName || profile.user.username);
+    }
+    if (sharedWrap) {
+      var sharedRooms = sharedVisibleRoomsForUser(profile.user.userId || profile.user.id);
+      if (!sharedRooms.length) {
+        sharedWrap.innerHTML = "<span class='member-shared-room more'>Sem sala compartilhada carregada ainda.</span>";
+      } else {
+        sharedWrap.innerHTML = sharedRooms.slice(0, 4).map(function(room) {
+          var items = (state.messagesByRoom[String(room.id)] || []).filter(function(message) {
+            return Number(message.authorId || message.userId || 0) === Number(profile.user.userId || profile.user.id);
+          }).length;
+          return "<span class='member-shared-room'><strong>" + esc(displayRoomName(room)) + "</strong><span>" + items + " msgs</span></span>";
+        }).join("") + (sharedRooms.length > 4 ? "<span class='member-shared-room more'>+" + (sharedRooms.length - 4) + " salas em comum</span>" : "");
+      }
     }
     actionDM.textContent = profile.canManage ? "Editar meu perfil" : "Abrir DM";
     actionDM.disabled = !(profile.canManage || profile.canDm);
@@ -5488,6 +5595,7 @@
       }
     });
     state.latestByRoom = nextLatestMap;
+    renderDashboardPulse();
   }
 
   function setupStream() {
