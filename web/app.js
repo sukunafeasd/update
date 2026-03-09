@@ -141,6 +141,7 @@
     appInstallSeenAt: 0,
     susClicks: 0,
     susPositionIndex: 0,
+    chatContextCollapsed: false,
     desktopSidebarCollapsed: false,
     desktopInspectorCollapsed: false
   };
@@ -1078,6 +1079,10 @@
     return "painel-dief.focus-mode." + Number(state.viewer && state.viewer.id || 0);
   }
 
+  function chatContextStorageKey() {
+    return "painel-dief.chat-context." + Number(state.viewer && state.viewer.id || 0);
+  }
+
   function appInstallStorageKey() {
     return "painel-dief.app-install-state";
   }
@@ -1148,6 +1153,27 @@
   function saveFocusMode() {
     try {
       window.localStorage.setItem(focusModeStorageKey(), state.focusMode ? "1" : "0");
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function loadChatContextCollapsed() {
+    try {
+      var raw = window.localStorage.getItem(chatContextStorageKey());
+      if (raw === null) {
+        return !!state.compactLayout;
+      }
+      return raw === "1";
+    } catch (err) {
+      return !!state.compactLayout;
+    }
+  }
+
+  function saveChatContextCollapsed() {
+    try {
+      window.localStorage.setItem(chatContextStorageKey(), state.chatContextCollapsed ? "1" : "0");
       return true;
     } catch (err) {
       return false;
@@ -1255,6 +1281,38 @@
     }
     button.textContent = state.focusMode ? "Foco on" : "Foco off";
     button.classList.toggle("active", !!state.focusMode);
+  }
+
+  function isChatContextForcedOpen() {
+    var room = activeRoom();
+    return !!isAppsLabRoom(room);
+  }
+
+  function syncChatContextUI() {
+    var button = q("btn-context-toggle");
+    var title = q("conversation-context-title");
+    var collapsed = !!state.chatContextCollapsed && !isChatContextForcedOpen() && !isSusView();
+    if (title) {
+      title.textContent = isAppsLabRoom(activeRoom()) ? "Central tecnica do app" : "Resumo da area";
+    }
+    if (!button) {
+      return;
+    }
+    if (isSusView()) {
+      button.disabled = true;
+      button.textContent = "Indisponivel";
+      button.classList.remove("active");
+      return;
+    }
+    if (isChatContextForcedOpen()) {
+      button.disabled = true;
+      button.textContent = "Fixo";
+      button.classList.remove("active");
+      return;
+    }
+    button.disabled = false;
+    button.textContent = collapsed ? "Expandir" : "Recolher";
+    button.classList.toggle("active", !collapsed);
   }
 
   function syncComposerDraftHint() {
@@ -1986,6 +2044,7 @@
     }
     q("device-pill").textContent = state.isMobile ? "mobile mode" : (state.compactLayout ? "compact mode" : "desktop mode");
     applyFocusMode();
+    applyChatContextState();
     syncBackdrop();
     syncPeekButtons();
   }
@@ -2005,6 +2064,12 @@
     syncPeekButtons();
   }
 
+  function applyChatContextState() {
+    var collapsed = !!state.chatContextCollapsed && !isChatContextForcedOpen() && !isSusView();
+    document.body.classList.toggle("chat-context-collapsed", collapsed);
+    syncChatContextUI();
+  }
+
   function toggleFocusMode() {
     state.focusMode = !state.focusMode;
     saveFocusMode();
@@ -2014,6 +2079,17 @@
     }
     renderHeaderAndRoomState();
     toast(state.focusMode ? "Modo foco ligado. Agora o chat respira." : "Modo foco desligado. A base voltou completa.", "ok");
+  }
+
+  function toggleChatContext() {
+    if (isChatContextForcedOpen() || isSusView()) {
+      applyChatContextState();
+      return;
+    }
+    state.chatContextCollapsed = !state.chatContextCollapsed;
+    saveChatContextCollapsed();
+    applyChatContextState();
+    toast(state.chatContextCollapsed ? "Contexto recolhido. O chat ganhou mais area." : "Contexto expandido. Os cards voltaram pro topo.", "ok");
   }
 
   function syncBackdrop() {
@@ -2506,6 +2582,7 @@
     state.appsNotesDraft = loadAppsNotes();
     state.favoriteNavIds = loadFavoriteNavIds();
     state.focusMode = loadFocusMode();
+    state.chatContextCollapsed = loadChatContextCollapsed();
     if (!state.viewer || state.viewer.role !== "owner") {
       state.users = [];
       state.joinRequests = [];
@@ -2544,6 +2621,7 @@
     requestNotificationsPermission();
     renderShell();
     applyFocusMode();
+    applyChatContextState();
     renderAppCenter();
     setConnectionStatus("syncing");
     if (state.activeRoomId) {
@@ -2830,6 +2908,7 @@
     q("sus-panel").classList.add("hidden");
     q("pins-strip").classList.remove("hidden");
     q("unread-banner").classList.remove("hidden");
+    applyChatContextState();
 
     if (isSusView()) {
       q("room-icon").textContent = "??";
@@ -2848,6 +2927,7 @@
       q("typing-indicator").classList.add("hidden");
       stateCard.classList.add("hidden");
       q("sus-panel").classList.remove("hidden");
+      applyChatContextState();
       return;
     }
 
@@ -2864,6 +2944,7 @@
       q("room-access-badge").className = "badge badge-live";
       q("room-access-badge").textContent = "grupo";
       stateCard.classList.add("hidden");
+      applyChatContextState();
       return;
     }
 
@@ -2880,6 +2961,7 @@
       q("room-access-badge").className = "badge badge-live";
       q("room-access-badge").textContent = "pronta";
       stateCard.classList.add("hidden");
+      applyChatContextState();
       return;
     }
 
@@ -2896,6 +2978,7 @@
       q("room-access-badge").className = "badge badge-live";
       q("room-access-badge").textContent = "livre";
       stateCard.classList.add("hidden");
+      applyChatContextState();
       return;
     }
 
@@ -2977,6 +3060,7 @@
     q("btn-ai").classList.toggle("hidden", room.slug !== "nego-dramias-ia");
     q("btn-ai").disabled = composerDisabled || state.sendingMessage || hasUploadingPendingUploads() || hasErroredPendingUploads();
     syncComposerDraftHint();
+    applyChatContextState();
   }
 
   function renderDashboard() {
@@ -6166,6 +6250,7 @@
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-focus-mode").addEventListener("click", toggleFocusMode);
+    q("btn-context-toggle").addEventListener("click", toggleChatContext);
     q("btn-browser-notify").addEventListener("click", handleBrowserNotifyToggle);
     if (q("btn-app-open")) {
       q("btn-app-open").addEventListener("click", function() {

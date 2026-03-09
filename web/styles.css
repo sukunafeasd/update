@@ -240,6 +240,9 @@ select {
 .login-card {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable both-edges;
+  scroll-padding-top: 0.8rem;
+  scroll-padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
 }
 
 .search-card,
@@ -1471,6 +1474,16 @@ body.sidebar-collapsed #channel-panel {
   min-width: 0;
 }
 
+.search-card,
+.media-card,
+.presence-item,
+.roster-item,
+.favorite-card,
+.poll-card,
+.event-card {
+  scroll-margin-top: 0.8rem;
+}
+
 .room-header-top {
   display: flex;
   align-items: center;
@@ -1544,9 +1557,66 @@ body.sidebar-collapsed #channel-panel {
   overflow: hidden;
 }
 
+.conversation-context-shell {
+  grid-row: 1;
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.018));
+  min-height: 0;
+}
+
+.conversation-context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.conversation-context-copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.conversation-context-copy strong {
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.conversation-context {
+  display: grid;
+  gap: 0.7rem;
+  min-height: 0;
+  max-height: min(34vh, 320px);
+  overflow: auto;
+  padding-right: 0.12rem;
+  scrollbar-width: thin;
+}
+
+body.chat-context-collapsed .conversation-context-shell {
+  gap: 0;
+  padding-bottom: 0.72rem;
+}
+
+body.chat-context-collapsed .conversation-context {
+  display: none;
+}
+
+body.chat-context-collapsed #conversation-panel {
+  gap: 0.62rem;
+}
+
 #conversation-panel.apps-lab-mode {
   grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto;
   align-content: stretch;
+}
+
+#conversation-panel.apps-lab-mode #conversation-context {
+  max-height: none;
 }
 
 #conversation-panel.apps-lab-mode #pins-strip,
@@ -1567,6 +1637,7 @@ body.sidebar-collapsed #channel-panel {
   grid-template-columns: 1fr;
 }
 
+#conversation-panel.sus-mode #conversation-context-shell,
 #conversation-panel.sus-mode #apps-lab-deck,
 #conversation-panel.sus-mode #pins-strip,
 #conversation-panel.sus-mode #typing-indicator,
@@ -1579,6 +1650,7 @@ body.focus-mode #workspace-grid {
   grid-template-columns: minmax(0, 1fr);
 }
 
+body.focus-mode #conversation-context-shell,
 body.focus-mode #room-dashboard,
 body.focus-mode #apps-lab-deck,
 body.focus-mode #room-state,
@@ -1656,21 +1728,29 @@ body.focus-mode #btn-sidebar-open {
 }
 
 #room-state {
-  grid-row: 3;
+  grid-row: 2;
+  max-height: min(22vh, 180px);
+  overflow: auto;
 }
 
 #pins-strip {
-  grid-row: 4;
+  grid-row: 3;
 }
 
 #unread-banner {
+  grid-row: 4;
+  max-width: 100%;
+  overflow: auto;
+}
+
+#sus-panel {
   grid-row: 5;
 }
 
 .dashboard-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 0.6rem;
   min-height: 0;
   overflow: auto;
   padding-right: 0.15rem;
@@ -1680,7 +1760,7 @@ body.focus-mode #btn-sidebar-open {
   min-width: 0;
   display: grid;
   gap: 0.28rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.52rem 0.68rem;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
@@ -1701,6 +1781,8 @@ body.focus-mode #btn-sidebar-open {
 }
 
 .dashboard-quickline {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -2182,6 +2264,7 @@ body.focus-mode #btn-sidebar-open {
   scroll-behavior: smooth;
   min-height: 0;
   overflow: auto;
+  padding-top: 0.1rem;
 }
 
 #typing-indicator {
@@ -2200,6 +2283,8 @@ body.focus-mode #btn-sidebar-open {
   border-radius: 18px;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+  scroll-margin-top: 0.85rem;
+  scroll-margin-bottom: 0.85rem;
 }
 
 .message-card.compact {
@@ -2365,6 +2450,8 @@ body.focus-mode #btn-sidebar-open {
   border-radius: 18px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.028);
+  max-height: 148px;
+  overflow: auto;
 }
 
 .pins-head {
@@ -2914,6 +3001,7 @@ body.inspector-collapsed #inspector-panel {
   min-width: 120px;
 }
 
+#conversation-panel.panel-shift #conversation-context-shell,
 #conversation-panel.panel-shift #room-dashboard,
 #conversation-panel.panel-shift #apps-lab-deck,
 #conversation-panel.panel-shift #room-state,
@@ -3408,6 +3496,52 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 }
 
+@media (max-height: 760px) and (min-width: 981px) {
+  #topbar {
+    grid-template-columns: minmax(0, 1fr) minmax(136px, 154px);
+    gap: 0.72rem;
+  }
+
+  .topbar-main {
+    padding: 0.72rem 0.82rem;
+  }
+
+  .topbar-actions {
+    width: 136px;
+    padding: 0.72rem;
+    gap: 0.45rem;
+  }
+
+  .topbar-actions .btn,
+  .topbar-utility-strip .btn {
+    min-height: 36px;
+    padding: 0.5rem 0.72rem;
+  }
+
+  .room-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  #topbar h2 {
+    font-size: 1.2rem;
+  }
+
+  #topbar p {
+    font-size: 0.87rem;
+  }
+
+  .topbar-utility-strip {
+    gap: 0.45rem;
+    padding-top: 0.6rem;
+  }
+
+  .room-pill-row .badge {
+    min-height: 28px;
+    padding: 0.22rem 0.58rem;
+  }
+}
+
 @media (max-width: 980px) {
   #topbar {
     grid-template-columns: 1fr;
@@ -3568,6 +3702,19 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.8rem;
   }
 
+  .conversation-context-shell {
+    padding: 0.72rem 0.76rem;
+    gap: 0.6rem;
+  }
+
+  .conversation-context-bar {
+    align-items: flex-start;
+  }
+
+  .conversation-context {
+    max-height: min(28vh, 240px);
+  }
+
   .topbar-actions .btn,
   .topbar-utility-strip .btn {
     min-height: 40px;
@@ -3717,6 +3864,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .login-shell {
     width: 100%;
     max-height: calc(var(--viewport-height) - 0.75rem);
+  }
+
+  .conversation-context-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .conversation-context-bar .btn {
+    width: 100%;
   }
 
   .login-card {

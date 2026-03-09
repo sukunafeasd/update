@@ -168,39 +168,49 @@
 
         <section id="workspace-grid">
           <section id="conversation-panel">
-            <div id="room-dashboard" class="dashboard-strip">
-              <article>
-                <span>Ultima atividade</span>
-                <strong id="dashboard-last-activity">--</strong>
-              </article>
-              <article>
-                <span>Online agora</span>
-                <strong id="dashboard-online-now">0</strong>
-              </article>
-              <article>
-                <span>Anexos nesta area</span>
-                <strong id="dashboard-room-files">0</strong>
-              </article>
-              <article>
-                <span>Modo</span>
-                <strong id="dashboard-room-mode">open</strong>
-              </article>
-              <article>
-                <span>Tema ativo</span>
-                <strong id="dashboard-theme">matrix</strong>
-              </article>
-              <article class="dashboard-tip-card">
-                <span>Nego Dramias diz</span>
-                <strong id="dashboard-nego-tip">Bah, escolhe uma sala e faz o estrago certo.</strong>
-              </article>
-            </div>
-            <div id="dashboard-quickline" class="dashboard-quickline"></div>
-            <section id="dashboard-pulse" class="members-insights dashboard-pulse"></section>
+            <section id="conversation-context-shell" class="conversation-context-shell">
+              <div class="conversation-context-bar">
+                <div class="conversation-context-copy">
+                  <span class="eyebrow">contexto da sala</span>
+                  <strong id="conversation-context-title">Resumo da area</strong>
+                </div>
+                <button id="btn-context-toggle" class="btn btn-ghost" type="button">Recolher</button>
+              </div>
 
-            <section id="direct-hub-deck" class="context-deck hidden"></section>
-            <section id="room-spotlight" class="context-deck hidden"></section>
+              <div id="conversation-context" class="conversation-context">
+                <div id="room-dashboard" class="dashboard-strip">
+                  <article>
+                    <span>Ultima atividade</span>
+                    <strong id="dashboard-last-activity">--</strong>
+                  </article>
+                  <article>
+                    <span>Online agora</span>
+                    <strong id="dashboard-online-now">0</strong>
+                  </article>
+                  <article>
+                    <span>Anexos nesta area</span>
+                    <strong id="dashboard-room-files">0</strong>
+                  </article>
+                  <article>
+                    <span>Modo</span>
+                    <strong id="dashboard-room-mode">open</strong>
+                  </article>
+                  <article>
+                    <span>Tema ativo</span>
+                    <strong id="dashboard-theme">matrix</strong>
+                  </article>
+                  <article class="dashboard-tip-card">
+                    <span>Nego Dramias diz</span>
+                    <strong id="dashboard-nego-tip">Bah, escolhe uma sala e faz o estrago certo.</strong>
+                  </article>
+                </div>
+                <div id="dashboard-quickline" class="dashboard-quickline"></div>
+                <section id="dashboard-pulse" class="members-insights dashboard-pulse"></section>
 
-            <section id="apps-lab-deck" class="apps-lab-deck hidden">
+                <section id="direct-hub-deck" class="context-deck hidden"></section>
+                <section id="room-spotlight" class="context-deck hidden"></section>
+
+                <section id="apps-lab-deck" class="apps-lab-deck hidden">
               <article class="utility-card">
                 <div class="utility-head">
                   <h4>UniversalD desktop</h4>
@@ -251,6 +261,8 @@
                   <span class="ghost-pill">atalho nativo</span>
                 </div>
               </article>
+                </section>
+              </div>
             </section>
 
             <section id="room-state" class="state-card hidden">
