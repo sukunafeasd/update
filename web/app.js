@@ -141,6 +141,7 @@
     appInstallSeenAt: 0,
     susClicks: 0,
     susPositionIndex: 0,
+    utilityStripCollapsed: false,
     chatContextCollapsed: false,
     desktopSidebarCollapsed: false,
     desktopInspectorCollapsed: false
@@ -206,6 +207,25 @@
       return;
     }
     window.setTimeout(function() {
+      var scroller = null;
+      try {
+        scroller = target.closest && target.closest(".modal-card, .login-card, .sidebar-scroll, .inspector-body, #message-stream, #panel-view, #login-view");
+      } catch (closestErr) {}
+      if (scroller && scroller !== document.body && scroller !== document.documentElement) {
+        try {
+          var targetRect = target.getBoundingClientRect();
+          var scrollerRect = scroller.getBoundingClientRect();
+          var delta = 0;
+          if (targetRect.bottom > scrollerRect.bottom - 18) {
+            delta = targetRect.bottom - (scrollerRect.bottom - 18);
+          } else if (targetRect.top < scrollerRect.top + 18) {
+            delta = targetRect.top - (scrollerRect.top + 18);
+          }
+          if (delta) {
+            scroller.scrollTop += delta;
+          }
+        } catch (scrollErr) {}
+      }
       try {
         target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
       } catch (err) {
@@ -1083,6 +1103,10 @@
     return "painel-dief.chat-context." + Number(state.viewer && state.viewer.id || 0);
   }
 
+  function utilityStripStorageKey() {
+    return "painel-dief.utility-strip." + Number(state.viewer && state.viewer.id || 0);
+  }
+
   function appInstallStorageKey() {
     return "painel-dief.app-install-state";
   }
@@ -1174,6 +1198,27 @@
   function saveChatContextCollapsed() {
     try {
       window.localStorage.setItem(chatContextStorageKey(), state.chatContextCollapsed ? "1" : "0");
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function loadUtilityStripCollapsed() {
+    try {
+      var raw = window.localStorage.getItem(utilityStripStorageKey());
+      if (raw === null) {
+        return !!state.compactLayout;
+      }
+      return raw === "1";
+    } catch (err) {
+      return !!state.compactLayout;
+    }
+  }
+
+  function saveUtilityStripCollapsed() {
+    try {
+      window.localStorage.setItem(utilityStripStorageKey(), state.utilityStripCollapsed ? "1" : "0");
       return true;
     } catch (err) {
       return false;
@@ -1313,6 +1358,19 @@
     button.disabled = false;
     button.textContent = collapsed ? "Expandir" : "Recolher";
     button.classList.toggle("active", !collapsed);
+  }
+
+  function syncUtilityStripUI() {
+    var button = q("btn-utility-toggle");
+    var collapsed = !!state.utilityStripCollapsed && !!state.compactLayout;
+    document.body.classList.toggle("utility-strip-collapsed", collapsed);
+    if (!button) {
+      return;
+    }
+    button.classList.toggle("hidden", !state.compactLayout);
+    button.classList.toggle("active", !!state.compactLayout && !collapsed);
+    button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    button.textContent = collapsed ? "Atalhos" : "Esconder";
   }
 
   function syncComposerDraftHint() {
@@ -2030,6 +2088,7 @@
       if (!wasCompact) {
         document.body.classList.remove("sidebar-open");
         document.body.classList.remove("inspector-open");
+        state.utilityStripCollapsed = loadUtilityStripCollapsed();
       }
       document.body.classList.toggle("sidebar-collapsed", !document.body.classList.contains("sidebar-open"));
       document.body.classList.toggle("inspector-collapsed", !document.body.classList.contains("inspector-open"));
@@ -2041,10 +2100,12 @@
       if (!state.desktopInspectorCollapsed) {
         document.body.classList.add("inspector-open");
       }
+      state.utilityStripCollapsed = false;
     }
     q("device-pill").textContent = state.isMobile ? "mobile mode" : (state.compactLayout ? "compact mode" : "desktop mode");
     applyFocusMode();
     applyChatContextState();
+    syncUtilityStripUI();
     syncBackdrop();
     syncPeekButtons();
   }
@@ -2092,9 +2153,35 @@
     toast(state.chatContextCollapsed ? "Contexto recolhido. O chat ganhou mais area." : "Contexto expandido. Os cards voltaram pro topo.", "ok");
   }
 
+  function toggleUtilityStrip() {
+    if (!state.compactLayout) {
+      state.utilityStripCollapsed = false;
+      syncUtilityStripUI();
+      return;
+    }
+    state.utilityStripCollapsed = !state.utilityStripCollapsed;
+    saveUtilityStripCollapsed();
+    syncUtilityStripUI();
+  }
+
+  function syncTransientLayoutState() {
+    var loginVisible = !q("login-view").classList.contains("hidden");
+    var panelVisible = !q("panel-view").classList.contains("hidden");
+    var hasModal = !!document.querySelector(".modal:not(.hidden)");
+    var drawerOpen;
+    if (!panelVisible) {
+      document.body.classList.remove("sidebar-open");
+      document.body.classList.remove("inspector-open");
+    }
+    drawerOpen = !!(panelVisible && state.compactLayout && (document.body.classList.contains("sidebar-open") || document.body.classList.contains("inspector-open")));
+    document.body.classList.toggle("modal-open", !!(hasModal && (loginVisible || panelVisible)));
+    document.body.classList.toggle("drawer-open", drawerOpen);
+  }
+
   function syncBackdrop() {
     var visible = state.compactLayout && (document.body.classList.contains("sidebar-open") || document.body.classList.contains("inspector-open"));
     q("mobile-backdrop").classList.toggle("hidden", !visible);
+    syncTransientLayoutState();
   }
 
   function syncPeekButtons() {
@@ -2158,6 +2245,7 @@
     document.body.classList.remove("inspector-collapsed");
     document.body.classList.add("inspector-open");
     syncPeekButtons();
+    syncTransientLayoutState();
   }
 
   function closeInspector() {
@@ -2421,9 +2509,15 @@
     setViewMode("login");
     q("login-view").classList.remove("hidden");
     q("panel-view").classList.add("hidden");
+    document.body.classList.remove("modal-open", "drawer-open", "utility-strip-collapsed", "sidebar-open", "inspector-open", "focus-mode");
     document.title = "Painel Dief";
     q("login-view").querySelector(".login-stage").classList.remove("login-error-pulse", "login-success-pulse");
     q("login-view").scrollTop = 0;
+    state.focusMode = false;
+    state.utilityStripCollapsed = false;
+    syncTransientLayoutState();
+    syncBackdrop();
+    syncPeekButtons();
     window.scrollTo(0, 0);
     if (message) {
       q("login-error").classList.remove("hidden");
@@ -2450,7 +2544,14 @@
     q("login-view").classList.add("hidden");
     q("panel-view").classList.remove("hidden");
     q("panel-view").scrollTop = 0;
+    document.body.classList.remove("modal-open", "drawer-open", "sidebar-open", "inspector-open");
+    detectMobile();
+    closeSidebar();
     closeInspector();
+    syncTransientLayoutState();
+    syncBackdrop();
+    syncPeekButtons();
+    window.scrollTo(0, 0);
     maybeOpenGuide();
     renderAppCenter();
   }
@@ -2497,6 +2598,7 @@
     state.roomSearch = "";
     state.compactLayout = false;
     state.focusMode = false;
+    state.utilityStripCollapsed = false;
     state.connectionStatus = "offline";
     state.lastStreamAt = 0;
     state.favoriteNavIds = [];
@@ -2583,6 +2685,7 @@
     state.favoriteNavIds = loadFavoriteNavIds();
     state.focusMode = loadFocusMode();
     state.chatContextCollapsed = loadChatContextCollapsed();
+    state.utilityStripCollapsed = loadUtilityStripCollapsed();
     if (!state.viewer || state.viewer.role !== "owner") {
       state.users = [];
       state.joinRequests = [];
@@ -2622,6 +2725,7 @@
     renderShell();
     applyFocusMode();
     applyChatContextState();
+    syncUtilityStripUI();
     renderAppCenter();
     setConnectionStatus("syncing");
     if (state.activeRoomId) {
@@ -2670,6 +2774,7 @@
     renderMediaPreview();
     syncComposerDraftHint();
     syncDocumentTitle();
+    syncUtilityStripUI();
     syncPeekButtons();
     ensureActiveNavVisible();
   }
@@ -3439,6 +3544,7 @@
     q("media-modal-prev").disabled = index <= 0;
     q("media-modal-next").disabled = index < 0 || index >= (sameRoomAttachments.length - 1);
     modal.classList.remove("hidden");
+    syncTransientLayoutState();
   }
 
   function openMediaPreview(roomId, messageId) {
@@ -4793,6 +4899,7 @@
     var room = roomById(roomId);
     q("unlock-room-name").textContent = "Digite a senha da sala " + (room ? room.name : "");
     q("unlock-modal").classList.remove("hidden");
+    syncTransientLayoutState();
     q("unlock-password").focus();
   }
 
@@ -4836,6 +4943,7 @@
     syncThemePresetState();
     renderProfileFormPreview();
     q("profile-modal").classList.remove("hidden");
+    syncTransientLayoutState();
   }
 
   function renderProfileFormPreview() {
@@ -5003,11 +5111,13 @@
       return;
     }
     q("guide-modal").classList.remove("hidden");
+    syncTransientLayoutState();
   }
 
   function openAppCenterModal() {
     renderAppCenter();
     q("app-center-modal").classList.remove("hidden");
+    syncTransientLayoutState();
   }
 
   function resetDownloadAccessState() {
@@ -5025,6 +5135,7 @@
   function openJoinRequestModal() {
     resetJoinRequestState();
     q("join-request-modal").classList.remove("hidden");
+    syncTransientLayoutState();
     q("join-request-email").focus();
   }
 
@@ -5037,12 +5148,14 @@
   function openJoinCompleteModal() {
     resetJoinCompleteState();
     q("join-complete-modal").classList.remove("hidden");
+    syncTransientLayoutState();
     q("join-complete-email").focus();
   }
 
   function openDownloadAccessModal() {
     resetDownloadAccessState();
     q("download-access-modal").classList.remove("hidden");
+    syncTransientLayoutState();
     q("download-access-password").focus();
   }
 
@@ -5242,11 +5355,13 @@
       state.selectedMember = data.profile;
       renderMemberProfile();
       q("member-modal").classList.remove("hidden");
+      syncTransientLayoutState();
     } catch (err) {
       state.selectedMember = fallbackSocialProfile(userId);
       if (state.selectedMember) {
         renderMemberProfile();
         q("member-modal").classList.remove("hidden");
+        syncTransientLayoutState();
         toast("Perfil abriu em modo local porque a API social oscilou.", "warn");
         return;
       }
@@ -5360,6 +5475,7 @@
     if (id === "join-complete-modal") {
       resetJoinCompleteState();
     }
+    syncTransientLayoutState();
   }
 
   async function saveProfile(payload, successMessage) {
@@ -6251,6 +6367,7 @@
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-focus-mode").addEventListener("click", toggleFocusMode);
     q("btn-context-toggle").addEventListener("click", toggleChatContext);
+    q("btn-utility-toggle").addEventListener("click", toggleUtilityStrip);
     q("btn-browser-notify").addEventListener("click", handleBrowserNotifyToggle);
     if (q("btn-app-open")) {
       q("btn-app-open").addEventListener("click", function() {

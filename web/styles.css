@@ -153,6 +153,7 @@ select {
 .view {
   position: relative;
   z-index: 1;
+  min-height: var(--viewport-height);
 }
 
 .hidden {
@@ -243,6 +244,15 @@ select {
   scrollbar-gutter: stable both-edges;
   scroll-padding-top: 0.8rem;
   scroll-padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+}
+
+.sidebar-scroll,
+.inspector-body,
+#message-stream,
+#room-media-list,
+.modal-card,
+.login-card {
+  scroll-padding-bottom: calc(0.95rem + env(safe-area-inset-bottom, 0px) + var(--keyboard-offset));
 }
 
 .search-card,
@@ -550,12 +560,17 @@ pre,
 
 #login-view {
   min-height: var(--viewport-height);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   padding: 2rem;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   width: 100%;
   scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .login-shell {
@@ -564,6 +579,8 @@ pre,
   max-height: calc(var(--viewport-height) - 2rem);
   margin-inline: auto;
   align-content: center;
+  flex: 0 0 auto;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 .login-card {
@@ -713,6 +730,12 @@ pre,
   justify-items: center;
 }
 
+.utility-toggle {
+  display: none;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .login-credit {
   font-size: 0.78rem;
   color: rgba(237, 249, 237, 0.68);
@@ -762,6 +785,7 @@ body.keyboard-open.compact .composer-shell textarea {
 
 #panel-view {
   height: var(--viewport-height);
+  min-height: var(--viewport-height);
   padding: 1rem;
   overflow: hidden;
 }
@@ -2921,6 +2945,24 @@ body.inspector-collapsed #inspector-panel {
   overflow: auto;
 }
 
+body.panel-mode.modal-open #panel-view,
+body.login-mode.modal-open #login-view {
+  overflow: hidden;
+}
+
+body.compact.drawer-open #workspace,
+body.mobile.drawer-open #workspace {
+  pointer-events: none;
+}
+
+body.compact.drawer-open #channel-panel,
+body.compact.drawer-open #inspector-panel,
+body.mobile.drawer-open #channel-panel,
+body.mobile.drawer-open #inspector-panel,
+body.modal-open .modal {
+  pointer-events: auto;
+}
+
 .modal-card.narrow {
   width: min(420px, 100%);
 }
@@ -3341,24 +3383,29 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 @media (max-width: 1080px) {
   #panel-view {
     padding: 0.8rem;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   #panel-shell {
     grid-template-columns: 1fr;
-    height: 100%;
+    height: auto;
+    min-height: calc(var(--viewport-height) - 1.6rem);
   }
 
   #channel-panel,
   #inspector-panel {
     position: fixed;
     top: 0.8rem;
-    bottom: 0.8rem;
+    bottom: calc(0.8rem + var(--keyboard-offset));
     z-index: 46;
-    width: min(var(--sidebar-width), calc(100vw - 1.6rem));
+    width: min(var(--sidebar-width), calc(var(--viewport-width) - 1.6rem));
+    max-height: calc(var(--viewport-height) - 1.6rem - var(--keyboard-offset));
     transition: transform 220ms ease, opacity 220ms ease;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+    overflow: hidden;
   }
 
   .dashboard-tip-card {
@@ -3384,6 +3431,16 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .topbar-utility-strip {
     flex-wrap: wrap;
     overflow-x: visible;
+  }
+
+  body.compact .utility-toggle,
+  body.mobile .utility-toggle {
+    display: inline-flex;
+  }
+
+  body.compact.utility-strip-collapsed .topbar-utility-strip,
+  body.mobile.utility-strip-collapsed .topbar-utility-strip {
+    display: none;
   }
 
   .sus-trigger {
@@ -3595,12 +3652,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .topbar-actions {
     width: 100%;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: stretch;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .topbar-actions .btn {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    min-width: max-content;
   }
 
   .topbar-utility-strip {
@@ -3651,10 +3711,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #panel-view {
     padding: 0.65rem;
+    padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
   }
 
   #workspace {
     gap: 0.65rem;
+    height: auto;
+    min-height: calc(var(--viewport-height) - 1.3rem);
   }
 
   .login-download-actions {
@@ -3684,6 +3747,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #conversation-panel {
     padding: 0.85rem;
+  }
+
+  #topbar {
+    gap: 0.6rem;
   }
 
   .room-item {
@@ -3780,9 +3847,9 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   #channel-panel,
   #inspector-panel {
     top: 0.65rem;
-    bottom: 0.65rem;
+    bottom: calc(0.65rem + var(--keyboard-offset));
     height: auto;
-    max-height: calc(var(--viewport-height) - 1.3rem);
+    max-height: calc(var(--viewport-height) - 1.3rem - var(--keyboard-offset));
   }
 
   .message-card {
@@ -3832,6 +3899,20 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
   }
 
+  .topbar-actions {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    justify-content: flex-start;
+  }
+
+  .topbar-actions .btn {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
   .presence-item {
     grid-template-columns: auto 1fr;
   }
@@ -3863,7 +3944,8 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .login-shell {
     width: 100%;
-    max-height: calc(var(--viewport-height) - 0.75rem);
+    max-height: none;
+    align-content: start;
   }
 
   .conversation-context-bar {
@@ -3879,6 +3961,8 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     gap: 0.95rem;
     padding: 1rem;
     border-radius: 20px;
+    max-height: none;
+    overflow: visible;
   }
 
   .login-brand strong {
@@ -3908,9 +3992,14 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.72rem 0.75rem;
   }
 
+  #conversation-panel {
+    padding: 0.78rem;
+  }
+
   .topbar-utility-strip {
     margin-inline: -0.1rem;
     padding-inline: 0.1rem;
+    padding-top: 0.5rem;
   }
 
   .room-header-top {
@@ -3930,6 +4019,16 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .room-item-top {
     gap: 0.45rem;
   }
+
+  .modal {
+    padding: 0.55rem;
+  }
+
+  .modal-card {
+    width: min(100%, calc(var(--viewport-width) - 1.1rem));
+    max-height: calc(var(--viewport-height) - 1.1rem - var(--keyboard-offset));
+    padding: 0.95rem;
+  }
 }
 
 @media (max-height: 820px) {
@@ -3939,12 +4038,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-shell {
-    max-height: calc(var(--viewport-height) - 1rem);
+    max-height: none;
+    align-content: start;
   }
 
   .login-card {
     gap: 1rem;
     padding: 1.2rem;
+    max-height: none;
+    overflow: visible;
   }
 
   .topbar-main,
@@ -3969,13 +4071,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-shell {
-    max-height: calc(var(--viewport-height) - 0.7rem);
+    max-height: none;
+    align-content: start;
   }
 
   .login-card {
     gap: 0.8rem;
     padding: 1rem;
-    max-height: calc(var(--viewport-height) - 0.7rem);
+    max-height: none;
+    overflow: visible;
   }
 
   .login-download-card {
@@ -4018,6 +4122,6 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   #channel-panel,
   #inspector-panel {
     top: 0.7rem;
-    bottom: 0.7rem;
+    bottom: calc(0.7rem + var(--keyboard-offset));
   }
 }
