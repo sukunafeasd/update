@@ -3,7 +3,7 @@
   --font-display: "Orbitron", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --viewport-width: 100vw;
-  --viewport-height: 100dvh;
+  --viewport-height: 100vh;
   --keyboard-offset: 0px;
   --bg: #06100c;
   --bg-alt: #0b1712;
@@ -101,6 +101,7 @@ body {
     radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent-strong) 10%, transparent), transparent 28%),
     linear-gradient(135deg, var(--bg), var(--bg-alt));
+  min-height: 100vh;
   min-height: var(--viewport-height);
   overflow: hidden;
   color-scheme: dark;
@@ -153,6 +154,7 @@ select {
 .view {
   position: relative;
   z-index: 1;
+  min-height: 100vh;
   min-height: var(--viewport-height);
 }
 
@@ -169,6 +171,7 @@ select {
 #channel-panel,
 #conversation-panel,
 #inspector-panel {
+  background-color: rgba(13, 24, 19, 0.94);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 92%, transparent), var(--surface));
   border: 1px solid var(--line);
   border-radius: var(--card-radius);
@@ -559,6 +562,7 @@ pre,
 }
 
 #login-view {
+  min-height: 100vh;
   min-height: var(--viewport-height);
   display: flex;
   flex-direction: column;
@@ -576,6 +580,7 @@ pre,
 .login-shell {
   width: min(520px, 100%);
   display: grid;
+  max-height: calc(100vh - 2rem);
   max-height: calc(var(--viewport-height) - 2rem);
   margin-inline: auto;
   align-content: center;
@@ -587,6 +592,7 @@ pre,
   display: grid;
   gap: 1.35rem;
   padding: 2rem;
+  max-height: min(calc(100vh - 2rem), 920px);
   max-height: min(calc(var(--viewport-height) - 2rem), 920px);
   overflow: auto;
   scrollbar-gutter: stable both-edges;
@@ -765,6 +771,36 @@ body.keyboard-open #login-view {
   align-items: start;
 }
 
+@supports not (color: color-mix(in srgb, white 50%, black)) {
+  body {
+    background: linear-gradient(135deg, #06100c, #0b1712);
+  }
+
+  .glass-card,
+  .login-card,
+  .info-card,
+  .utility-card,
+  .state-card,
+  .modal-card,
+  #channel-panel,
+  #conversation-panel,
+  #inspector-panel,
+  .topbar-main,
+  .conversation-context-shell {
+    background: rgba(13, 24, 19, 0.96);
+    border-color: rgba(123, 255, 0, 0.16);
+  }
+
+  .btn,
+  .badge,
+  .pill,
+  input,
+  textarea,
+  select {
+    background-color: rgba(13, 24, 19, 0.96);
+  }
+}
+
 body.keyboard-open.compact #topbar {
   position: static;
 }
@@ -784,6 +820,8 @@ body.keyboard-open.compact .composer-shell textarea {
 }
 
 #panel-view {
+  height: 100vh;
+  min-height: 100vh;
   height: var(--viewport-height);
   min-height: var(--viewport-height);
   padding: 1rem;
@@ -1472,6 +1510,7 @@ body.sidebar-collapsed #channel-panel {
   padding: 0.95rem 1.05rem;
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
+  background-color: rgba(13, 24, 19, 0.94);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 94%, transparent), var(--surface-soft));
   box-shadow: var(--shadow);
   align-content: start;
@@ -1588,6 +1627,7 @@ body.sidebar-collapsed #channel-panel {
   padding: 0.8rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 20px;
+  background-color: rgba(14, 23, 19, 0.92);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.018));
   min-height: 0;
 }
