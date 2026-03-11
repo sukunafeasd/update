@@ -267,12 +267,21 @@
     }
     window.setTimeout(function() {
       var scroller = null;
+      var targetRect = null;
+      var viewportHeight = 0;
+      var keyboardAwareBottom = 0;
+      var outsideViewport = false;
       try {
         scroller = target.closest && target.closest(".modal-card, .login-card, .sidebar-scroll, .inspector-body, #message-stream, #panel-view, #login-view");
       } catch (closestErr) {}
+      try {
+        targetRect = target.getBoundingClientRect();
+        viewportHeight = window.visualViewport && window.visualViewport.height ? window.visualViewport.height : window.innerHeight;
+        keyboardAwareBottom = Math.max(140, viewportHeight - 24);
+        outsideViewport = !!(targetRect && (targetRect.top < 14 || targetRect.bottom > keyboardAwareBottom));
+      } catch (rectErr) {}
       if (scroller && scroller !== document.body && scroller !== document.documentElement) {
         try {
-          var targetRect = target.getBoundingClientRect();
           var scrollerRect = scroller.getBoundingClientRect();
           var delta = 0;
           if (targetRect.bottom > scrollerRect.bottom - 18) {
@@ -284,8 +293,15 @@
             scroller.scrollTop += delta;
           }
         } catch (scrollErr) {}
+        return;
       }
-      safeScrollIntoView(target, { block: "center", inline: "nearest", behavior: "smooth" });
+      if (outsideViewport) {
+        safeScrollIntoView(target, {
+          block: state.isMobile ? "nearest" : "center",
+          inline: "nearest",
+          behavior: state.isMobile ? "auto" : "smooth"
+        });
+      }
     }, 120);
   }
 
@@ -2877,6 +2893,9 @@
       syncTransientLayoutState();
       syncBackdrop();
       syncPeekButtons();
+      if (state.isMobile || state.compactLayout) {
+        return;
+      }
       safeScrollIntoView(topbar, { block: "start", behavior: "auto" });
     }, 90);
   }
