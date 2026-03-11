@@ -428,7 +428,9 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 			headers.Set("Pragma", "no-cache")
 			headers.Set("Expires", "0")
 		case strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js"):
-			headers.Set("Cache-Control", "no-cache")
+			headers.Set("Cache-Control", "no-store")
+			headers.Set("Pragma", "no-cache")
+			headers.Set("Expires", "0")
 		}
 
 		next.ServeHTTP(w, r)

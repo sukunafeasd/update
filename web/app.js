@@ -202,6 +202,25 @@
     });
   }
 
+  function safeScrollIntoView(target, options) {
+    if (!target || typeof target.scrollIntoView !== "function") {
+      return;
+    }
+    try {
+      if (options) {
+        target.scrollIntoView(options);
+      } else {
+        target.scrollIntoView();
+      }
+      return;
+    } catch (err) {
+    }
+    try {
+      target.scrollIntoView();
+    } catch (ignored) {
+    }
+  }
+
   function ensureFieldVisible(target) {
     if (!target || !(state.compactLayout || state.isMobile)) {
       return;
@@ -226,13 +245,7 @@
           }
         } catch (scrollErr) {}
       }
-      try {
-        target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-      } catch (err) {
-        try {
-          target.scrollIntoView();
-        } catch (e) {}
-      }
+      safeScrollIntoView(target, { block: "center", inline: "nearest", behavior: "smooth" });
     }, 120);
   }
 
@@ -2196,15 +2209,11 @@
 
   function ensureActiveNavVisible() {
     var active = document.querySelector(".room-item.active");
-    if (!active || typeof active.scrollIntoView !== "function") {
+    if (!active) {
       return;
     }
     window.requestAnimationFrame(function() {
-      try {
-        active.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-      } catch (e) {
-        active.scrollIntoView();
-      }
+      safeScrollIntoView(active, { block: "nearest", inline: "nearest", behavior: "smooth" });
     });
   }
 
@@ -2594,9 +2603,7 @@
       syncTransientLayoutState();
       syncBackdrop();
       syncPeekButtons();
-      if (topbar && topbar.scrollIntoView) {
-        topbar.scrollIntoView({ block: "start", behavior: "auto" });
-      }
+      safeScrollIntoView(topbar, { block: "start", behavior: "auto" });
     }, 90);
   }
 
