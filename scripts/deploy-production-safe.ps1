@@ -22,6 +22,37 @@ if ([string]::IsNullOrWhiteSpace($RenderServiceId)) {
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $backupScript = Join-Path $root "scripts\\backup-remote-panel.ps1"
 $smokeScript = Join-Path $root "scripts\\smoke-production.ps1"
+$fingerprintCmd = Join-Path $root "cmd\\panel-fingerprint"
+
+function Get-BackupFingerprint {
+  param(
+    [string]$ArchivePath
+  )
+
+  Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+  $extractRoot = Join-Path $root ".runtime\\deploy-fingerprint"
+  if (Test-Path $extractRoot) {
+    Remove-Item $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
+  try {
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $extractRoot)
+    $dbPath = Join-Path $extractRoot "universald.snapshot.db"
+    $uploadsDir = Join-Path $extractRoot "panel_uploads"
+    if (-not (Test-Path $dbPath)) {
+      throw "snapshot db ausente no backup"
+    }
+    $fingerprint = (& go run $fingerprintCmd -db $dbPath -uploads $uploadsDir).Trim()
+    if ([string]::IsNullOrWhiteSpace($fingerprint)) {
+      throw "fingerprint do backup vazia"
+    }
+    return $fingerprint
+  } finally {
+    if (Test-Path $extractRoot) {
+      Remove-Item $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
 
 function Wait-ProductionReady {
   param(
@@ -75,6 +106,7 @@ $backupPath = & powershell -ExecutionPolicy Bypass -File $backupScript -BaseUrl 
 if (-not (Test-Path $backupPath)) {
   throw "Backup remoto nao foi gerado."
 }
+$backupFingerprint = Get-BackupFingerprint -ArchivePath $backupPath
 
 $opsHeaders = @{
   Authorization = "Bearer $OpsToken"
@@ -131,8 +163,8 @@ if ($postEvents -lt $preEvents) {
 if ($postPolls -lt $prePolls) {
   throw "Restore reduziu enquetes: antes=$prePolls depois=$postPolls"
 }
-if (-not [string]::IsNullOrWhiteSpace($preFingerprint) -and -not [string]::IsNullOrWhiteSpace($postFingerprint) -and $postFingerprint -ne $preFingerprint) {
-  throw "Restore alterou a assinatura dos dados: antes=$preFingerprint depois=$postFingerprint"
+if (-not [string]::IsNullOrWhiteSpace($backupFingerprint) -and -not [string]::IsNullOrWhiteSpace($postFingerprint) -and $postFingerprint -ne $backupFingerprint) {
+  throw "Restore alterou a assinatura dos dados: backup=$backupFingerprint depois=$postFingerprint"
 }
 
 Write-Host "[6/6] smoke final"
