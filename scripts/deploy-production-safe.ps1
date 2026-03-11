@@ -76,6 +76,16 @@ if (-not (Test-Path $backupPath)) {
   throw "Backup remoto nao foi gerado."
 }
 
+$opsHeaders = @{
+  Authorization = "Bearer $OpsToken"
+}
+$preSummary = Invoke-RestMethod -Method Get -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/summary") -Headers $opsHeaders
+$preUsers = [int]($preSummary.summary.users)
+$preRooms = [int]($preSummary.summary.rooms)
+$preMessages = [int]($preSummary.summary.messages)
+$preEvents = [int]($preSummary.summary.events)
+$prePolls = [int]($preSummary.summary.polls)
+
 Write-Host "[2/6] trigger deploy no Render"
 $headers = @{
   Authorization = "Bearer $RenderApiKey"
@@ -95,10 +105,30 @@ Write-Host "[4/6] aguardando producao responder"
 Wait-ProductionReady -HealthUrl ($BaseUrl.TrimEnd("/") + "/api/health") -ReadyUrl ($BaseUrl.TrimEnd("/") + "/api/ready") -TimeoutSec $WaitTimeoutSec
 
 Write-Host "[5/6] restaurando snapshot apos deploy"
-$opsHeaders = @{
-  Authorization = "Bearer $OpsToken"
-}
 Invoke-RestMethod -Method Post -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/import") -Headers $opsHeaders -InFile $backupPath -ContentType "application/zip" | Out-Null
+
+$postSummary = Invoke-RestMethod -Method Get -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/summary") -Headers $opsHeaders
+$postUsers = [int]($postSummary.summary.users)
+$postRooms = [int]($postSummary.summary.rooms)
+$postMessages = [int]($postSummary.summary.messages)
+$postEvents = [int]($postSummary.summary.events)
+$postPolls = [int]($postSummary.summary.polls)
+
+if ($postUsers -lt $preUsers) {
+  throw "Restore reduziu usuarios: antes=$preUsers depois=$postUsers"
+}
+if ($postRooms -lt $preRooms) {
+  throw "Restore reduziu salas: antes=$preRooms depois=$postRooms"
+}
+if ($postMessages -lt $preMessages) {
+  throw "Restore reduziu mensagens: antes=$preMessages depois=$postMessages"
+}
+if ($postEvents -lt $preEvents) {
+  throw "Restore reduziu eventos: antes=$preEvents depois=$postEvents"
+}
+if ($postPolls -lt $prePolls) {
+  throw "Restore reduziu enquetes: antes=$prePolls depois=$postPolls"
+}
 
 Write-Host "[6/6] smoke final"
 if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
