@@ -4463,6 +4463,28 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     gap: 0.42rem;
   }
 
+  body.mobile.composer-focus #topbar,
+  body.compact.composer-focus #topbar {
+    gap: 0.32rem;
+  }
+
+  body.mobile.composer-focus .topbar-utility-strip,
+  body.compact.composer-focus .topbar-utility-strip,
+  body.mobile.composer-focus #conversation-context-shell,
+  body.compact.composer-focus #conversation-context-shell,
+  body.mobile.composer-focus #room-dashboard,
+  body.compact.composer-focus #room-dashboard,
+  body.mobile.composer-focus #room-state,
+  body.compact.composer-focus #room-state,
+  body.mobile.composer-focus #pins-strip,
+  body.compact.composer-focus #pins-strip,
+  body.mobile.composer-focus #unread-banner,
+  body.compact.composer-focus #unread-banner,
+  body.mobile.composer-focus #typing-indicator,
+  body.compact.composer-focus #typing-indicator {
+    display: none !important;
+  }
+
   .conversation-context-shell,
   #room-dashboard,
   #room-state,
@@ -4508,6 +4530,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .composer-shell {
     padding: 0.64rem;
     border-radius: 16px;
+  }
+
+  body.mobile.composer-focus #conversation-panel,
+  body.compact.composer-focus #conversation-panel {
+    gap: 0.28rem;
   }
 
   .composer-shell textarea {

@@ -2300,6 +2300,20 @@
     syncUtilityStripUI();
   }
 
+  function setComposerFocusMode(active) {
+    if (!state.compactLayout) {
+      document.body.classList.remove("composer-focus");
+      return;
+    }
+    if (active) {
+      closeSidebar();
+      closeInspector();
+      document.body.classList.add("composer-focus");
+      return;
+    }
+    document.body.classList.remove("composer-focus");
+  }
+
   function syncTransientLayoutState() {
     var loginVisible = !q("login-view").classList.contains("hidden");
     var panelVisible = !q("panel-view").classList.contains("hidden");
@@ -6686,6 +6700,23 @@
     q("btn-sidebar-open").addEventListener("click", openSidebar);
     q("composer-form").addEventListener("submit", handleComposerSubmit);
     q("composer-input").addEventListener("input", handleTypingInput);
+    q("composer-input").addEventListener("focus", function() {
+      setComposerFocusMode(true);
+      if (state.compactLayout) {
+        state.utilityStripCollapsed = true;
+        syncUtilityStripUI();
+        if (!isChatContextForcedOpen() && !isSusView()) {
+          state.chatContextCollapsed = true;
+          applyChatContextState();
+        }
+      }
+      ensureFieldVisible(q("composer-input"));
+    });
+    q("composer-input").addEventListener("blur", function() {
+      window.setTimeout(function() {
+        setComposerFocusMode(false);
+      }, 120);
+    });
     q("composer-input").addEventListener("keydown", function(event) {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
