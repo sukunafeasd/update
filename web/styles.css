@@ -2331,6 +2331,9 @@ body.focus-mode #btn-sidebar-open {
   height: 96px;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 26%, transparent), transparent 38%),
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), rgba(255,255,255,0.02));

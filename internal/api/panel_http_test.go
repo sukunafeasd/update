@@ -104,6 +104,7 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 		"bio":          "Teste HTTP do Painel Dief",
 		"theme":        "matrix",
 		"bannerPreset": "pulse",
+		"bannerUrl":    "/uploads/banner-http.png",
 		"accentColor":  "#33ff88",
 		"status":       "online",
 		"statusText":   "lapidando o painel",
@@ -113,6 +114,9 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 	}
 	if asMap(t, updatedProfile["viewer"])["bannerPreset"] != "pulse" {
 		t.Fatalf("bannerPreset not updated")
+	}
+	if asMap(t, updatedProfile["viewer"])["bannerUrl"] != "/uploads/banner-http.png" {
+		t.Fatalf("bannerUrl not updated")
 	}
 
 	upload := mustUploadFile(t, client, ts.URL+"/api/panel/upload", "files", "audit-http.png", "image/png", []byte{

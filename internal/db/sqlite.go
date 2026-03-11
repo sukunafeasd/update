@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS panel_users (
 	password_hash TEXT NOT NULL,
 	theme TEXT NOT NULL DEFAULT 'matrix',
 	banner_preset TEXT NOT NULL DEFAULT 'grid',
+	banner_url TEXT NOT NULL DEFAULT '',
 	accent_color TEXT NOT NULL DEFAULT '#7bff00',
 	avatar_url TEXT NOT NULL DEFAULT '',
 	bio TEXT NOT NULL DEFAULT '',
@@ -315,6 +316,9 @@ DROP TABLE IF EXISTS optimization_runs;
 		return err
 	}
 	if err := s.ensureColumnExists("panel_users", "banner_preset", "ALTER TABLE panel_users ADD COLUMN banner_preset TEXT NOT NULL DEFAULT 'grid'"); err != nil {
+		return err
+	}
+	if err := s.ensureColumnExists("panel_users", "banner_url", "ALTER TABLE panel_users ADD COLUMN banner_url TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
 	if err := s.ensureColumnExists("panel_users", "status_text", "ALTER TABLE panel_users ADD COLUMN status_text TEXT NOT NULL DEFAULT ''"); err != nil {

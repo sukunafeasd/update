@@ -523,11 +523,15 @@ func TestUpdateProfileSanitizesAvatarAndDisplayName(t *testing.T) {
 		t.Fatalf("login owner: %v", err)
 	}
 
-	if _, err := svc.UpdateProfile(viewer, "", "bio enxuta", "matrix", "grid", "#7bff00", "javascript:alert(1)", "online", "status curto"); err == nil {
+	if _, err := svc.UpdateProfile(viewer, "", "bio enxuta", "matrix", "grid", "javascript:alert(1)", "#7bff00", "javascript:alert(1)", "online", "status curto"); err == nil {
+		t.Fatalf("expected invalid banner url to be rejected")
+	}
+
+	if _, err := svc.UpdateProfile(viewer, "", "bio enxuta", "matrix", "grid", "", "#7bff00", "javascript:alert(1)", "online", "status curto"); err == nil {
 		t.Fatalf("expected invalid avatar url to be rejected")
 	}
 
-	updated, err := svc.UpdateProfile(viewer, "   ", "bio alinhada", "cobalt", "arcade", "#54b8ff", "/uploads/avatar.png", "away", "jogando e montando a base")
+	updated, err := svc.UpdateProfile(viewer, "   ", "bio alinhada", "cobalt", "arcade", "/uploads/banner.png", "#54b8ff", "/uploads/avatar.png", "away", "jogando e montando a base")
 	if err != nil {
 		t.Fatalf("update profile with local upload avatar: %v", err)
 	}
@@ -539,6 +543,9 @@ func TestUpdateProfileSanitizesAvatarAndDisplayName(t *testing.T) {
 	}
 	if updated.Status != "away" {
 		t.Fatalf("expected sanitized presence status, got %q", updated.Status)
+	}
+	if updated.BannerURL != "/uploads/banner.png" {
+		t.Fatalf("expected sanitized local banner url, got %q", updated.BannerURL)
 	}
 	if updated.StatusText != "jogando e montando a base" {
 		t.Fatalf("expected status text to persist, got %q", updated.StatusText)
@@ -565,7 +572,7 @@ func TestProfilePersistsAcrossLogoutAndLogin(t *testing.T) {
 		t.Fatalf("login owner: %v", err)
 	}
 
-	updated, err := svc.UpdateProfile(viewer, "Dief Persistente", "bio salva", "cobalt", "horizon", "#54b8ff", "", "away", "voltando ja")
+	updated, err := svc.UpdateProfile(viewer, "Dief Persistente", "bio salva", "cobalt", "horizon", "/uploads/banner-persist.png", "#54b8ff", "", "away", "voltando ja")
 	if err != nil {
 		t.Fatalf("update profile: %v", err)
 	}
@@ -593,6 +600,9 @@ func TestProfilePersistsAcrossLogoutAndLogin(t *testing.T) {
 	}
 	if bootstrap.Viewer.BannerPreset != "horizon" {
 		t.Fatalf("expected banner preset to persist, got %q", bootstrap.Viewer.BannerPreset)
+	}
+	if bootstrap.Viewer.BannerURL != "/uploads/banner-persist.png" {
+		t.Fatalf("expected banner url to persist, got %q", bootstrap.Viewer.BannerURL)
 	}
 }
 

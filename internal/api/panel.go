@@ -95,6 +95,7 @@ type panelProfileRequest struct {
 	Bio          string `json:"bio"`
 	Theme        string `json:"theme"`
 	BannerPreset string `json:"bannerPreset"`
+	BannerURL    string `json:"bannerUrl"`
 	AccentColor  string `json:"accentColor"`
 	AvatarURL    string `json:"avatarUrl"`
 	Status       string `json:"status"`
@@ -391,7 +392,7 @@ func (s *Server) handlePanelProfile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	updated, err := s.panelSvc.UpdateProfile(user, req.DisplayName, req.Bio, req.Theme, req.BannerPreset, req.AccentColor, req.AvatarURL, req.Status, req.StatusText)
+	updated, err := s.panelSvc.UpdateProfile(user, req.DisplayName, req.Bio, req.Theme, req.BannerPreset, req.BannerURL, req.AccentColor, req.AvatarURL, req.Status, req.StatusText)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return

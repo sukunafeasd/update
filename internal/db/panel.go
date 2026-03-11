@@ -62,7 +62,7 @@ func (s *Store) countByQuery(query string, args ...any) (int, error) {
 
 func (s *Store) ListPanelUsers() ([]model.PanelUser, error) {
 	rows, err := s.db.Query(`
-SELECT id, username, email, display_name, role, theme, banner_preset, accent_color, avatar_url, bio, status, status_text,
+SELECT id, username, email, display_name, role, theme, banner_preset, banner_url, accent_color, avatar_url, bio, status, status_text,
        created_by, created_at, updated_at, last_login_at, password_hash
 FROM panel_users
 ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'vip' THEN 2 ELSE 3 END, display_name ASC`)
@@ -87,7 +87,7 @@ ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'vip' THEN 2 ELS
 
 func (s *Store) GetPanelUserByID(id int64) (model.PanelUser, error) {
 	row := s.db.QueryRow(`
-SELECT id, username, email, display_name, role, theme, banner_preset, accent_color, avatar_url, bio, status, status_text,
+SELECT id, username, email, display_name, role, theme, banner_preset, banner_url, accent_color, avatar_url, bio, status, status_text,
        created_by, created_at, updated_at, last_login_at, password_hash
 FROM panel_users
 WHERE id = ?
@@ -105,7 +105,7 @@ LIMIT 1`, id)
 func (s *Store) GetPanelUserByLogin(login string) (model.PanelUser, error) {
 	login = strings.TrimSpace(strings.ToLower(login))
 	row := s.db.QueryRow(`
-SELECT id, username, email, display_name, role, theme, banner_preset, accent_color, avatar_url, bio, status, status_text,
+SELECT id, username, email, display_name, role, theme, banner_preset, banner_url, accent_color, avatar_url, bio, status, status_text,
        created_by, created_at, updated_at, last_login_at, password_hash
 FROM panel_users
 WHERE LOWER(username) = ? OR LOWER(email) = ?
@@ -152,9 +152,9 @@ func (s *Store) CreatePanelUser(input model.PanelUser) (model.PanelUser, error) 
 
 	result, err := s.db.Exec(`
 INSERT INTO panel_users (
-	username, email, display_name, role, password_hash, theme, banner_preset, accent_color,
+	username, email, display_name, role, password_hash, theme, banner_preset, banner_url, accent_color,
 	avatar_url, bio, status, status_text, created_by, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(strings.TrimSpace(input.Username)),
 		strings.ToLower(strings.TrimSpace(input.Email)),
 		strings.TrimSpace(input.DisplayName),
@@ -162,6 +162,7 @@ INSERT INTO panel_users (
 		input.PasswordHash,
 		strings.TrimSpace(strings.ToLower(input.Theme)),
 		strings.TrimSpace(strings.ToLower(input.BannerPreset)),
+		strings.TrimSpace(input.BannerURL),
 		strings.TrimSpace(input.AccentColor),
 		strings.TrimSpace(input.AvatarURL),
 		strings.TrimSpace(input.Bio),
@@ -187,11 +188,12 @@ func (s *Store) UpdatePanelUserProfile(input model.PanelUser) (model.PanelUser, 
 	}
 	_, err := s.db.Exec(`
 UPDATE panel_users
-SET display_name = ?, theme = ?, banner_preset = ?, accent_color = ?, avatar_url = ?, bio = ?, status = ?, status_text = ?, updated_at = ?
+SET display_name = ?, theme = ?, banner_preset = ?, banner_url = ?, accent_color = ?, avatar_url = ?, bio = ?, status = ?, status_text = ?, updated_at = ?
 WHERE id = ?`,
 		strings.TrimSpace(input.DisplayName),
 		strings.TrimSpace(strings.ToLower(input.Theme)),
 		strings.TrimSpace(strings.ToLower(input.BannerPreset)),
+		strings.TrimSpace(input.BannerURL),
 		strings.TrimSpace(input.AccentColor),
 		strings.TrimSpace(input.AvatarURL),
 		strings.TrimSpace(input.Bio),
@@ -331,7 +333,7 @@ ON CONFLICT(user_id) DO UPDATE SET
 
 func (s *Store) ListPanelPresence(now time.Time, onlineWindow time.Duration) ([]model.PanelPresence, error) {
 	rows, err := s.db.Query(`
-SELECT u.id, u.username, u.display_name, u.role, u.theme, u.banner_preset, u.accent_color, u.avatar_url, u.bio, u.status_text,
+SELECT u.id, u.username, u.display_name, u.role, u.theme, u.banner_preset, u.banner_url, u.accent_color, u.avatar_url, u.bio, u.status_text,
        COALESCE(p.status, 'offline'), COALESCE(p.room_id, 0), COALESCE(p.last_seen_at, u.updated_at)
 FROM panel_users u
 LEFT JOIN panel_presence p ON p.user_id = u.id
@@ -352,6 +354,7 @@ ORDER BY CASE u.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'vip' THEN 2 E
 			&item.Role,
 			&item.Theme,
 			&item.BannerPreset,
+			&item.BannerURL,
 			&item.AccentColor,
 			&item.AvatarURL,
 			&item.Bio,
@@ -378,7 +381,7 @@ ORDER BY CASE u.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'vip' THEN 2 E
 
 func (s *Store) GetPanelPresenceByUserID(userID int64, now time.Time, onlineWindow time.Duration) (model.PanelPresence, error) {
 	row := s.db.QueryRow(`
-SELECT u.id, u.username, u.display_name, u.role, u.theme, u.banner_preset, u.accent_color, u.avatar_url, u.bio,
+SELECT u.id, u.username, u.display_name, u.role, u.theme, u.banner_preset, u.banner_url, u.accent_color, u.avatar_url, u.bio,
        COALESCE(p.status, 'offline'), COALESCE(p.room_id, 0), COALESCE(p.last_seen_at, u.updated_at)
 FROM panel_users u
 LEFT JOIN panel_presence p ON p.user_id = u.id
@@ -394,6 +397,7 @@ LIMIT 1`, userID)
 		&item.Role,
 		&item.Theme,
 		&item.BannerPreset,
+		&item.BannerURL,
 		&item.AccentColor,
 		&item.AvatarURL,
 		&item.Bio,
@@ -1041,6 +1045,19 @@ func (s *Store) HasPanelAvatar(uploadURL string) (bool, error) {
 	return count > 0, nil
 }
 
+func (s *Store) HasPanelBanner(uploadURL string) (bool, error) {
+	uploadURL = strings.TrimSpace(uploadURL)
+	if uploadURL == "" {
+		return false, nil
+	}
+	row := s.db.QueryRow(`SELECT COUNT(1) FROM panel_users WHERE banner_url = ?`, uploadURL)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("check panel banner upload: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (s *Store) TogglePanelReaction(messageID, userID int64, emoji string) error {
 	if messageID <= 0 || userID <= 0 {
 		return errors.New("reacao invalida")
@@ -1501,7 +1518,7 @@ func (s *Store) SearchPanel(query string, roomIDs []int64, viewerID int64, limit
 	pattern := "%" + strings.ToLower(query) + "%"
 
 	userRows, err := s.db.Query(`
-SELECT id, username, email, display_name, role, theme, banner_preset, accent_color, avatar_url, bio, status, status_text,
+SELECT id, username, email, display_name, role, theme, banner_preset, banner_url, accent_color, avatar_url, bio, status, status_text,
        created_by, created_at, updated_at, last_login_at, password_hash
 FROM panel_users
 WHERE LOWER(username) LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?
@@ -1857,6 +1874,7 @@ func scanPanelUser(scan func(dest ...any) error) (model.PanelUser, error) {
 		&item.Role,
 		&item.Theme,
 		&item.BannerPreset,
+		&item.BannerURL,
 		&item.AccentColor,
 		&item.AvatarURL,
 		&item.Bio,

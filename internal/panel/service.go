@@ -927,7 +927,11 @@ func (s *Service) GetSocialProfile(viewer model.PanelUser, targetUserID int64) (
 	}, nil
 }
 
-func (s *Service) UpdateProfile(user model.PanelUser, displayName, bio, theme, bannerPreset, accentColor, avatarURL, status, statusText string) (model.PanelUser, error) {
+func (s *Service) UpdateProfile(user model.PanelUser, displayName, bio, theme, bannerPreset, bannerURL, accentColor, avatarURL, status, statusText string) (model.PanelUser, error) {
+	cleanBannerURL, err := sanitizeBannerURL(bannerURL)
+	if err != nil {
+		return model.PanelUser{}, err
+	}
 	cleanAvatarURL, err := sanitizeAvatarURL(avatarURL)
 	if err != nil {
 		return model.PanelUser{}, err
@@ -942,6 +946,7 @@ func (s *Service) UpdateProfile(user model.PanelUser, displayName, bio, theme, b
 			user.BannerPreset,
 			defaultBannerByRole(user.Role),
 		),
+		BannerURL:   cleanBannerURL,
 		AccentColor: sanitizeAccent(accentColor),
 		AvatarURL:   cleanAvatarURL,
 		Status:      sanitizePresence(status),
@@ -1054,7 +1059,14 @@ func (s *Service) CanAccessUpload(user model.PanelUser, sessionID, uploadURL str
 	if err != nil {
 		return false, err
 	}
-	return avatarReferenced, nil
+	if avatarReferenced {
+		return true, nil
+	}
+	bannerReferenced, err := s.store.HasPanelBanner(uploadURL)
+	if err != nil {
+		return false, err
+	}
+	return bannerReferenced, nil
 }
 
 func (s *Service) RunTerminal(actor model.PanelUser, command string) (model.PanelTerminalResult, error) {
@@ -2534,6 +2546,34 @@ func sanitizeAvatarURL(raw string) (string, error) {
 	}
 	if strings.ToLower(parsed.Scheme) != "https" || strings.TrimSpace(parsed.Host) == "" || parsed.User != nil {
 		return "", errors.New("avatar externo precisa usar https valido")
+	}
+	return parsed.String(), nil
+}
+
+func sanitizeBannerURL(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	if len(raw) > 512 {
+		return "", errors.New("banner grande demais. usa um link menor ou upload local")
+	}
+	if strings.HasPrefix(raw, "/uploads/") {
+		clean := filepath.ToSlash(filepath.Clean(raw))
+		if !strings.HasPrefix(clean, "/uploads/") || clean == "/uploads" || strings.Contains(clean, "..") {
+			return "", errors.New("banner invalido. usa upload local do painel ou https")
+		}
+		if !isAllowedAvatarExt(filepath.Ext(clean)) {
+			return "", errors.New("banner precisa ser imagem valida do painel")
+		}
+		return clean, nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed == nil {
+		return "", errors.New("link de banner invalido")
+	}
+	if strings.ToLower(parsed.Scheme) != "https" || strings.TrimSpace(parsed.Host) == "" || parsed.User != nil {
+		return "", errors.New("banner externo precisa usar https valido")
 	}
 	return parsed.String(), nil
 }

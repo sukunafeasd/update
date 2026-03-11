@@ -323,6 +323,36 @@
     return "";
   }
 
+  function safeBannerUrl(raw) {
+    var value = String(raw || "").trim();
+    var parsed;
+    if (!value) {
+      return "";
+    }
+    if (/^\/uploads\/[A-Za-z0-9._\-]+$/i.test(value)) {
+      return value;
+    }
+    try {
+      parsed = new URL(value, window.location.origin);
+    } catch (e) {
+      return "";
+    }
+    if (parsed.origin === window.location.origin && /^\/uploads\/[A-Za-z0-9._\-]+$/i.test(parsed.pathname)) {
+      return parsed.pathname + parsed.search + parsed.hash;
+    }
+    if (parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+    return "";
+  }
+
+  function cssUrl(value) {
+    return encodeURI(String(value || ""))
+      .replace(/'/g, "%27")
+      .replace(/\(/g, "%28")
+      .replace(/\)/g, "%29");
+  }
+
   function safeAttachmentUrl(raw) {
     var value = String(raw || "").trim();
     var parsed;
@@ -524,29 +554,33 @@
     return String(fallback || "#7bff00");
   }
 
-  function panelBannerStyle(theme, accent, bannerPreset) {
+  function panelBannerStyle(theme, accent, bannerPreset, bannerUrl) {
     var base = normalizeAccentColor(themeAccent(theme), "#7bff00");
     var tone = normalizeAccentColor(accent, base);
+    var cleanBannerUrl = safeBannerUrl(bannerUrl);
+    var bannerLayer = cleanBannerUrl
+      ? "linear-gradient(180deg, rgba(6,10,18,0.18), rgba(6,10,18,0.64)), url('" + cssUrl(cleanBannerUrl) + "') center/cover no-repeat, "
+      : "";
     switch (String(bannerPreset || "grid").toLowerCase()) {
       case "pulse":
-        return "radial-gradient(circle at 18% 24%, " + tone + "88 0%, transparent 24%), " +
+        return bannerLayer + "radial-gradient(circle at 18% 24%, " + tone + "88 0%, transparent 24%), " +
           "radial-gradient(circle at 78% 22%, " + base + "44 0%, transparent 26%), " +
           "radial-gradient(circle at 50% 110%, " + tone + "55 0%, transparent 42%), " +
           "linear-gradient(135deg, rgba(6,10,18,0.98) 0%, rgba(7,22,20,0.94) 48%, rgba(8,12,20,0.98) 100%)";
       case "arcade":
-        return "linear-gradient(120deg, rgba(255,255,255,0.04) 0 9%, transparent 9% 18%, rgba(255,255,255,0.03) 18% 26%, transparent 26% 36%, rgba(255,255,255,0.02) 36% 100%), " +
+        return bannerLayer + "linear-gradient(120deg, rgba(255,255,255,0.04) 0 9%, transparent 9% 18%, rgba(255,255,255,0.03) 18% 26%, transparent 26% 36%, rgba(255,255,255,0.02) 36% 100%), " +
           "linear-gradient(135deg, " + tone + "22 0%, transparent 40%), " +
           "linear-gradient(90deg, rgba(7,13,20,0.98), rgba(11,18,29,0.95) 45%, rgba(8,12,20,0.98))";
       case "horizon":
-        return "radial-gradient(circle at 50% 130%, " + tone + "55 0%, transparent 34%), " +
+        return bannerLayer + "radial-gradient(circle at 50% 130%, " + tone + "55 0%, transparent 34%), " +
           "linear-gradient(180deg, " + base + "22 0%, transparent 24%), " +
           "linear-gradient(135deg, rgba(5,10,18,0.98) 0%, rgba(9,17,30,0.94) 52%, rgba(8,14,22,0.98) 100%)";
       case "stealth":
-        return "linear-gradient(90deg, rgba(255,255,255,0.05) 0 2%, transparent 2% 14%, rgba(255,255,255,0.02) 14% 16%, transparent 16% 100%), " +
+        return bannerLayer + "linear-gradient(90deg, rgba(255,255,255,0.05) 0 2%, transparent 2% 14%, rgba(255,255,255,0.02) 14% 16%, transparent 16% 100%), " +
           "radial-gradient(circle at 85% 14%, " + tone + "33 0%, transparent 22%), " +
           "linear-gradient(135deg, rgba(4,8,12,0.99), rgba(8,12,18,0.96) 55%, rgba(6,8,12,0.99))";
       default:
-        return "radial-gradient(circle at 14% 18%, " + tone + "66 0%, transparent 34%), " +
+        return bannerLayer + "radial-gradient(circle at 14% 18%, " + tone + "66 0%, transparent 34%), " +
           "radial-gradient(circle at 84% 12%, " + base + "55 0%, transparent 28%), " +
           "linear-gradient(135deg, rgba(6,10,18,0.98) 0%, rgba(10,18,28,0.94) 48%, rgba(8,12,20,0.98) 100%)";
     }
@@ -2421,6 +2455,15 @@
     } catch (e) {}
   }
 
+  function maybeVibrate(pattern) {
+    if (!state.isMobile || !navigator || typeof navigator.vibrate !== "function") {
+      return;
+    }
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+
   function pushActivity(text, tone) {
     state.activity.unshift({
       text: text,
@@ -2458,6 +2501,11 @@
     stack.appendChild(item);
     pushActivity(label + ". " + text, tone || "ok");
     playTone(tone || "ok");
+    if (tone === "warn") {
+      maybeVibrate([22, 58, 22]);
+    } else if (tone === "err") {
+      maybeVibrate([42, 85, 42]);
+    }
     window.setTimeout(function() {
       if (item.parentNode) {
         item.parentNode.removeChild(item);
@@ -2523,6 +2571,22 @@
     try {
       new Notification(title, { body: body });
     } catch (e) {}
+  }
+
+  function totalUnreadCount() {
+    return Object.keys(state.unread || {}).reduce(function(sum, key) {
+      return sum + Number(state.unread[key] || 0);
+    }, 0);
+  }
+
+  function updateDocumentTitle() {
+    var unread = totalUnreadCount();
+    var room = activeRoom();
+    var base = "Painel Dief";
+    if (room) {
+      base += " // " + displayRoomName(room);
+    }
+    document.title = unread > 0 ? ("(" + unread + ") " + base) : base;
   }
 
   function requestNotificationsPermission() {
@@ -2772,6 +2836,7 @@
     state.favoriteNavIds = [];
     state.desktopSidebarCollapsed = false;
     state.desktopInspectorCollapsed = false;
+    updateDocumentTitle();
     if (state.stream) {
       state.stream.close();
       state.stream = null;
@@ -2891,6 +2956,7 @@
     applyTheme();
     requestNotificationsPermission();
     renderShell();
+    updateDocumentTitle();
     applyFocusMode();
     applyChatContextState();
     syncUtilityStripUI();
@@ -5038,6 +5104,7 @@
     state.previousOnlineMap = onlineMap(state.online);
     applyTheme();
     renderShell();
+    updateDocumentTitle();
     if (state.viewer && state.viewer.role === "owner") {
       loadUsers();
       loadJoinRequests();
@@ -5111,6 +5178,7 @@
     q("profile-status").value = state.viewer.status || "online";
     q("profile-theme").value = state.viewer.theme || "matrix";
     q("profile-banner-preset").value = state.viewer.bannerPreset || "grid";
+    q("profile-banner-url").value = state.viewer.bannerUrl || "";
     q("profile-accent").value = state.viewer.accentColor || "#7bff00";
     q("profile-avatar").value = state.viewer.avatarUrl || "";
     q("profile-bio").value = state.viewer.bio || "";
@@ -5127,6 +5195,7 @@
     var banner = q("profile-preview-banner");
     var insightWrap = q("profile-preview-insights");
     var avatarUrl = safeAvatarUrl(q("profile-avatar").value.trim());
+    var bannerUrl = safeBannerUrl(q("profile-banner-url").value.trim());
     var displayName = q("profile-display").value.trim() || (state.viewer && (state.viewer.displayName || state.viewer.username)) || "Painel Dief";
     var status = q("profile-status").value || "online";
     var statusText = q("profile-status-text").value.trim();
@@ -5138,7 +5207,7 @@
       return;
     }
     if (banner) {
-      banner.style.background = panelBannerStyle(theme, accent, bannerPreset);
+      banner.style.background = panelBannerStyle(theme, accent, bannerPreset, bannerUrl);
     }
     if (avatarUrl) {
       avatarWrap.innerHTML = "<img class='message-avatar profile-avatar-lg' alt='" + esc(displayName) + "' src='" + esc(avatarUrl) + "' />";
@@ -5157,7 +5226,7 @@
         "<article class='insight-card'><span>midia</span><strong>" + stats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
         "<article class='insight-card'><span>salas</span><strong>" + stats.roomCount + "</strong><p>salas onde tua marca apareceu</p></article>" +
         "<article class='insight-card'><span>tom</span><strong>" + esc(themeLabel(theme)) + "</strong><p>" + esc(statusText || "sem status customizado") + "</p></article>" +
-        "<article class='insight-card'><span>capa</span><strong>" + esc(bannerLabel(bannerPreset)) + "</strong><p>banner do teu cartao publico</p></article>";
+        "<article class='insight-card'><span>capa</span><strong>" + esc(bannerUrl ? "Imagem propria" : bannerLabel(bannerPreset)) + "</strong><p>" + esc(bannerUrl ? "banner enviado pro cartao publico" : "banner do teu cartao publico") + "</p></article>";
     }
   }
 
@@ -5220,7 +5289,7 @@
         ? "Tu bloqueou esse usuario."
         : (profile.user.mutedByViewer ? "Tu silenciou esse usuario." : "Sem bloqueio ou silencio ativo."));
     if (banner) {
-      banner.style.background = panelBannerStyle(profile.user.theme || "matrix", profile.user.accentColor || themeAccent(profile.user.theme || "matrix"), profile.user.bannerPreset || "grid");
+      banner.style.background = panelBannerStyle(profile.user.theme || "matrix", profile.user.accentColor || themeAccent(profile.user.theme || "matrix"), profile.user.bannerPreset || "grid", profile.user.bannerUrl || "");
     }
     var memberAvatarUrl = safeAvatarUrl(profile.user.avatarUrl);
     if (memberAvatarUrl) {
@@ -5262,6 +5331,9 @@
           displayName: state.viewer.displayName,
           role: state.viewer.role,
           theme: state.viewer.theme,
+          bannerPreset: state.viewer.bannerPreset,
+          bannerUrl: state.viewer.bannerUrl,
+          accentColor: state.viewer.accentColor,
           avatarUrl: state.viewer.avatarUrl,
           bio: state.viewer.bio,
           status: state.viewer.status,
@@ -5664,6 +5736,7 @@
       });
       state.viewer = data.viewer;
       applyTheme();
+      updateDocumentTitle();
       renderShell();
       toast(successMessage || "Perfil salvo.", "ok");
       return true;
@@ -5682,6 +5755,7 @@
       bio: q("profile-bio").value.trim(),
       theme: q("profile-theme").value,
       bannerPreset: q("profile-banner-preset").value,
+      bannerUrl: q("profile-banner-url").value.trim(),
       accentColor: q("profile-accent").value,
       avatarUrl: q("profile-avatar").value.trim(),
       status: q("profile-status").value,
@@ -6130,6 +6204,7 @@
       if (nextMap[userId] && !state.previousOnlineMap[userId] && person) {
         toast((person.displayName || person.username) + " colou no painel.", "ok");
         notifyBrowser("Painel Dief", (person.displayName || person.username) + " ficou online.");
+        maybeVibrate([18, 40, 18]);
       }
       if (!nextMap[userId] && state.previousOnlineMap[userId] && person) {
         toast((person.displayName || person.username) + " vazou do painel.", "warn");
@@ -6157,14 +6232,17 @@
         if (messageMentionsViewer(next)) {
           toast((next.authorName || "Alguem") + " te marcou em " + (room ? displayRoomName(room) : "uma sala") + ".", "warn");
           notifyBrowser("Painel Dief", (next.authorName || "Alguem") + " te marcou em " + (room ? displayRoomName(room) : "uma sala") + ".");
+          maybeVibrate([26, 55, 26]);
         } else if (room && room.scope === "dm") {
           toast("Nova direta de " + (next.authorName || displayRoomName(room)) + ".", "ok");
           notifyBrowser("Painel Dief", "Nova DM de " + (next.authorName || displayRoomName(room)) + ".");
+          maybeVibrate([22, 48, 22]);
         }
       }
     });
     state.latestByRoom = nextLatestMap;
     renderDashboardPulse();
+    updateDocumentTitle();
   }
 
   function setupStream() {
@@ -6674,7 +6752,18 @@
         renderProfileFormPreview();
       });
     });
-    ["profile-display", "profile-status", "profile-accent", "profile-avatar", "profile-bio", "profile-status-text", "profile-banner-preset"].forEach(function(id) {
+    q("btn-upload-banner").addEventListener("click", function() { q("banner-upload-input").click(); });
+    q("btn-clear-banner").addEventListener("click", function() {
+      q("profile-banner-url").value = "";
+      renderProfileFormPreview();
+    });
+    q("banner-upload-input").addEventListener("change", function() {
+      uploadSelectedFile(q("banner-upload-input"), function(attachment) {
+        q("profile-banner-url").value = safeAttachmentUrl(attachment.url);
+        renderProfileFormPreview();
+      });
+    });
+    ["profile-display", "profile-status", "profile-accent", "profile-avatar", "profile-bio", "profile-status-text", "profile-banner-preset", "profile-banner-url"].forEach(function(id) {
       q(id).addEventListener("input", renderProfileFormPreview);
       q(id).addEventListener("change", renderProfileFormPreview);
     });

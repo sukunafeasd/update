@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=1.4.4-profile1" />
+  <link rel="stylesheet" href="/styles.css?v=1.4.4-profile3" />
 </head>
 <body data-theme="matrix" class="login-mode">
   <canvas id="matrix-bg" aria-hidden="true"></canvas>
@@ -600,6 +600,13 @@
           </div>
         </div>
 
+        <label for="profile-banner-url">Banner por imagem</label>
+        <div class="inline-row">
+          <input id="profile-banner-url" type="text" placeholder="/uploads/teu-banner.png" />
+          <button id="btn-upload-banner" type="button" class="btn btn-ghost">Subir banner</button>
+          <button id="btn-clear-banner" type="button" class="btn btn-ghost">Limpar</button>
+        </div>
+
         <section class="profile-preview-card">
           <div id="profile-preview-banner" class="profile-preview-banner"></div>
           <div id="profile-preview-avatar" class="social-profile-avatar">PD</div>
@@ -871,7 +878,8 @@
 
   <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/mp4,.pdf,.zip,.rar,.7z,.txt,.md,.json,.csv,.log,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.js,.ts,.tsx,.jsx,.go,.py,.sql,.yaml,.yml,.toml,.ini" multiple hidden />
   <input id="avatar-upload-input" type="file" accept="image/*" hidden />
+  <input id="banner-upload-input" type="file" accept="image/*" hidden />
 
-  <script src="/app.js?v=1.4.4-profile1"></script>
+  <script src="/app.js?v=1.4.4-profile3"></script>
 </body>
 </html>
