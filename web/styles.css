@@ -5154,3 +5154,192 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.88rem;
   }
 }
+
+@media (max-width: 760px) {
+  body.mobile-clean #panel-view {
+    padding: 0.42rem;
+    padding-bottom: calc(0.42rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.mobile-clean #workspace {
+    gap: 0.34rem;
+    min-height: calc(var(--viewport-height) - 0.84rem);
+  }
+
+  body.mobile-clean #topbar {
+    gap: 0.2rem;
+    border-radius: 16px;
+  }
+
+  body.mobile-clean .topbar-main {
+    padding: 0.5rem 0.58rem;
+  }
+
+  body.mobile-clean #btn-utility-toggle {
+    min-height: 34px;
+    padding: 0.34rem 0.58rem;
+    border-radius: 11px;
+    font-size: 0.74rem;
+  }
+
+  body.mobile-clean .room-header-top {
+    gap: 0.34rem;
+  }
+
+  body.mobile-clean .room-copy {
+    display: grid;
+    gap: 0.08rem;
+  }
+
+  body.mobile-clean #topbar h2 {
+    font-size: 0.92rem;
+  }
+
+  body.mobile-clean .room-pill-row .badge:nth-child(n+3) {
+    display: none;
+  }
+
+  body.mobile-clean .topbar-utility-strip {
+    padding-top: 0.08rem;
+    padding-bottom: 0.08rem;
+  }
+
+  body.mobile-clean #conversation-panel {
+    padding: 0.46rem;
+    gap: 0.24rem;
+    border-radius: 16px;
+    min-height: calc(var(--viewport-height) - 5.7rem);
+  }
+
+  body.mobile-clean .conversation-context-shell {
+    padding: 0.3rem 0.36rem;
+  }
+
+  body.mobile-clean .conversation-context-copy strong {
+    font-size: 0.8rem;
+  }
+
+  body.mobile-clean #message-stream {
+    scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.mobile-clean .message-card {
+    padding: 0.54rem 0.56rem;
+    border-radius: 13px;
+  }
+
+  body.mobile-clean .message-meta,
+  body.mobile-clean .message-body,
+  body.mobile-clean .message-actions .btn,
+  body.mobile-clean .quick-reactions .btn {
+    font-size: 0.82rem;
+  }
+
+  body.mobile-clean .composer-shell {
+    padding: 0.4rem;
+  }
+
+  body.mobile-clean .composer-hint,
+  body.mobile-clean #composer-draft-hint {
+    font-size: 0.68rem;
+  }
+
+  body.mobile-clean .composer-shell textarea {
+    min-height: 60px;
+    max-height: 14.5vh;
+  }
+
+  body.mobile-clean .composer-actions .btn {
+    min-height: 38px;
+    border-radius: 12px;
+  }
+
+  body.mobile-clean #channel-panel,
+  body.mobile-clean #inspector-panel {
+    top: 0.42rem;
+    bottom: calc(0.42rem + env(safe-area-inset-bottom, 0px));
+    width: min(78vw, 290px);
+    padding: 0.52rem;
+    border-radius: 16px;
+  }
+
+  body.mobile-clean .channel-top,
+  body.mobile-clean .inspector-head {
+    margin-bottom: 0.24rem;
+  }
+
+  body.mobile-clean .sidebar-brand strong,
+  body.mobile-clean .inspector-head h3 {
+    font-size: 0.88rem;
+  }
+
+  body.mobile-clean .sidebar-brand span,
+  body.mobile-clean .inspector-head .eyebrow {
+    font-size: 0.68rem;
+  }
+
+  body.mobile-clean .modal-card {
+    width: min(100%, calc(var(--viewport-width) - 0.8rem));
+    max-height: calc(var(--viewport-height) - 0.8rem - var(--keyboard-offset));
+    padding: 0.82rem;
+    border-radius: 15px;
+  }
+
+  body.mobile-clean .modal-head {
+    gap: 0.4rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-bottom: 0.1rem;
+    background: linear-gradient(180deg, rgba(10, 18, 14, 0.98), rgba(10, 18, 14, 0.92));
+  }
+}
+
+@media (max-width: 460px) {
+  body.mobile-clean #panel-view {
+    padding: 0.34rem;
+    padding-bottom: calc(0.34rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.mobile-clean .topbar-main {
+    padding: 0.46rem 0.52rem;
+  }
+
+  body.mobile-clean .room-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    font-size: 0.84rem;
+  }
+
+  body.mobile-clean #topbar h2 {
+    font-size: 0.88rem;
+  }
+
+  body.mobile-clean #conversation-panel {
+    padding: 0.4rem;
+    min-height: calc(var(--viewport-height) - 5.3rem);
+  }
+
+  body.mobile-clean .message-card {
+    padding: 0.5rem 0.52rem;
+  }
+
+  body.mobile-clean .message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  body.mobile-clean .composer-shell textarea {
+    min-height: 56px;
+    max-height: 13vh;
+  }
+
+  body.mobile-clean #channel-panel,
+  body.mobile-clean #inspector-panel {
+    width: calc(100vw - 0.7rem);
+    left: 0.35rem;
+    right: 0.35rem;
+  }
+}
