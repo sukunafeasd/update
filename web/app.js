@@ -2380,6 +2380,10 @@
       syncPeekButtons();
       return;
     }
+    if (state.isMobile) {
+      state.utilityStripCollapsed = true;
+      syncUtilityStripUI();
+    }
     closeInspector();
     document.body.classList.add("sidebar-open");
     document.body.classList.remove("sidebar-collapsed");
@@ -2400,6 +2404,10 @@
 
   function openInspector() {
     if (state.compactLayout) {
+      if (state.isMobile) {
+        state.utilityStripCollapsed = true;
+        syncUtilityStripUI();
+      }
       closeSidebar();
       document.body.classList.remove("inspector-collapsed");
       document.body.classList.add("inspector-open");
@@ -4756,6 +4764,12 @@
     renderPendingAttachment();
     renderReplyChip();
     restoreComposerDraft();
+    if (state.isMobile) {
+      state.utilityStripCollapsed = true;
+      state.chatContextCollapsed = true;
+      syncUtilityStripUI();
+      applyChatContextState();
+    }
     renderAdminPanels();
     await loadMessages(roomId, silent);
     await loadPolls(roomId, true);
@@ -4797,6 +4811,12 @@
       renderPolls();
       renderAdminPanels();
       renderInspectorTabs();
+      if (state.isMobile) {
+        state.utilityStripCollapsed = true;
+        state.chatContextCollapsed = true;
+        syncUtilityStripUI();
+        applyChatContextState();
+      }
       sendPresence();
       if (!silent) {
         toast("Bah... tu abriu a aba suspeita. Depois nao reclama.", "warn");
@@ -4828,6 +4848,12 @@
       renderPolls();
       renderAdminPanels();
       renderInspectorTabs();
+      if (state.isMobile) {
+        state.utilityStripCollapsed = true;
+        state.chatContextCollapsed = true;
+        syncUtilityStripUI();
+        applyChatContextState();
+      }
       sendPresence();
       if (state.compactLayout) {
         closeSidebar();
