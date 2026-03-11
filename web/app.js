@@ -3395,10 +3395,10 @@
     }
 
     q("composer-input").disabled = composerDisabled || state.sendingMessage;
-    q("btn-send").disabled = composerDisabled || state.sendingMessage || hasUploadingPendingUploads() || hasErroredPendingUploads();
+    q("btn-send").disabled = composerDisabled || state.sendingMessage || hasUploadingPendingUploads();
     q("btn-attach").disabled = composerDisabled || state.sendingMessage;
     q("btn-ai").classList.toggle("hidden", room.slug !== "nego-dramias-ia");
-    q("btn-ai").disabled = composerDisabled || state.sendingMessage || hasUploadingPendingUploads() || hasErroredPendingUploads();
+    q("btn-ai").disabled = composerDisabled || state.sendingMessage || hasUploadingPendingUploads();
     syncComposerDraftHint();
     applyChatContextState();
   }
@@ -3577,6 +3577,14 @@
     renderPendingAttachment();
   }
 
+  function clearErroredPendingUploads() {
+    state.pendingUploads = pendingUploads().filter(function(item) {
+      return item && item.status !== "error";
+    });
+    syncPendingAttachmentAlias();
+    renderPendingAttachment();
+  }
+
   function createPendingUpload(file) {
     return {
       id: "upl-" + Date.now() + "-" + Math.random().toString(16).slice(2),
@@ -3594,9 +3602,16 @@
     return new Promise(function(resolve, reject) {
       var formData = new FormData();
       var request = new XMLHttpRequest();
+      var storedSessionId = readStoredSessionId();
       formData.append("file", file);
       request.open("POST", "/api/panel/upload", true);
       request.withCredentials = true;
+      request.timeout = 45000;
+      if (storedSessionId) {
+        try {
+          request.setRequestHeader("X-Panel-Session", storedSessionId);
+        } catch (headerErr) {}
+      }
       request.upload.onprogress = function(event) {
         if (!event.lengthComputable || !onProgress) {
           return;
@@ -3622,6 +3637,9 @@
       };
       request.onerror = function() {
         reject(new Error("rede falhou no meio do upload"));
+      };
+      request.ontimeout = function() {
+        reject(new Error("upload demorou demais e a rede cansou"));
       };
       request.send(formData);
     });
@@ -4868,8 +4886,13 @@
       return;
     }
     if (hasErroredPendingUploads()) {
-      toast("Resolve os uploads que falharam antes de enviar.", "warn");
-      return;
+      if (!body && !queuedAttachments.length) {
+        toast("Tem upload falhando. Remove ou tenta de novo antes de mandar algo vazio.", "warn");
+        return;
+      }
+      clearErroredPendingUploads();
+      queuedAttachments = readyPendingUploads();
+      toast("Limpei os uploads que falharam e segui com o resto.", "warn");
     }
     if (isSusView()) {
       toast("Nessa aba tu nao conversa. Tu so provoca o destino.", "warn");
@@ -6688,19 +6711,31 @@
       }
     });
     q("composer-form").addEventListener("dragenter", function(event) {
+      if (state.isMobile) {
+        return;
+      }
       event.preventDefault();
       q("composer-form").classList.add("drag-over");
     });
     q("composer-form").addEventListener("dragover", function(event) {
+      if (state.isMobile) {
+        return;
+      }
       event.preventDefault();
       q("composer-form").classList.add("drag-over");
     });
     q("composer-form").addEventListener("dragleave", function(event) {
+      if (state.isMobile) {
+        return;
+      }
       if (!q("composer-form").contains(event.relatedTarget)) {
         q("composer-form").classList.remove("drag-over");
       }
     });
     q("composer-form").addEventListener("drop", async function(event) {
+      if (state.isMobile) {
+        return;
+      }
       event.preventDefault();
       q("composer-form").classList.remove("drag-over");
       if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) {
