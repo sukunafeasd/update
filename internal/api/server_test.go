@@ -665,6 +665,13 @@ func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
 	if exportRec.Code != http.StatusOK {
 		t.Fatalf("expected export 200, got %d", exportRec.Code)
 	}
+	summaryOriginal, err := panelSvc.OpsSummary()
+	if err != nil {
+		t.Fatalf("ops summary original: %v", err)
+	}
+	if strings.TrimSpace(summaryOriginal.DataFingerprint) == "" {
+		t.Fatalf("expected original data fingerprint")
+	}
 
 	owner, _, err := panelSvc.Login("dief", "TesteOwner#2026")
 	if err != nil {
@@ -697,6 +704,9 @@ func TestOpsImportRestoresPreviousSnapshot(t *testing.T) {
 	}
 	if summaryAfter.Users >= summaryBefore.Users {
 		t.Fatalf("expected import to roll back extra user, before=%d after=%d", summaryBefore.Users, summaryAfter.Users)
+	}
+	if summaryAfter.DataFingerprint != summaryOriginal.DataFingerprint {
+		t.Fatalf("expected import to restore original fingerprint, got before=%s after=%s", summaryOriginal.DataFingerprint, summaryAfter.DataFingerprint)
 	}
 	if _, err := store.GetPanelUserByLogin("restore-alvo"); err == nil {
 		t.Fatalf("expected imported snapshot to remove extra user")

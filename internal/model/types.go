@@ -215,17 +215,20 @@ type PanelJoinRequest struct {
 }
 
 type PanelOpsSummary struct {
-	Users          int       `json:"users"`
-	Rooms          int       `json:"rooms"`
-	Messages       int       `json:"messages"`
-	Events         int       `json:"events"`
-	Polls          int       `json:"polls"`
-	OnlineUsers    int       `json:"onlineUsers"`
-	ActiveSessions int       `json:"activeSessions"`
-	UploadFiles    int       `json:"uploadFiles"`
-	UploadBytes    int64     `json:"uploadBytes"`
-	Version        int64     `json:"version"`
-	GeneratedAt    time.Time `json:"generatedAt"`
+	Users           int       `json:"users"`
+	Rooms           int       `json:"rooms"`
+	Messages        int       `json:"messages"`
+	Events          int       `json:"events"`
+	Polls           int       `json:"polls"`
+	OnlineUsers     int       `json:"onlineUsers"`
+	ActiveSessions  int       `json:"activeSessions"`
+	UploadFiles     int       `json:"uploadFiles"`
+	UploadBytes     int64     `json:"uploadBytes"`
+	DBFingerprint   string    `json:"dbFingerprint,omitempty"`
+	UploadDigest    string    `json:"uploadDigest,omitempty"`
+	DataFingerprint string    `json:"dataFingerprint,omitempty"`
+	Version         int64     `json:"version"`
+	GeneratedAt     time.Time `json:"generatedAt"`
 }
 
 type PanelTerminalResult struct {

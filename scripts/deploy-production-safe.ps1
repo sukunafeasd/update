@@ -85,6 +85,7 @@ $preRooms = [int]($preSummary.summary.rooms)
 $preMessages = [int]($preSummary.summary.messages)
 $preEvents = [int]($preSummary.summary.events)
 $prePolls = [int]($preSummary.summary.polls)
+$preFingerprint = [string]($preSummary.summary.dataFingerprint)
 
 Write-Host "[2/6] trigger deploy no Render"
 $headers = @{
@@ -113,6 +114,7 @@ $postRooms = [int]($postSummary.summary.rooms)
 $postMessages = [int]($postSummary.summary.messages)
 $postEvents = [int]($postSummary.summary.events)
 $postPolls = [int]($postSummary.summary.polls)
+$postFingerprint = [string]($postSummary.summary.dataFingerprint)
 
 if ($postUsers -lt $preUsers) {
   throw "Restore reduziu usuarios: antes=$preUsers depois=$postUsers"
@@ -128,6 +130,9 @@ if ($postEvents -lt $preEvents) {
 }
 if ($postPolls -lt $prePolls) {
   throw "Restore reduziu enquetes: antes=$prePolls depois=$postPolls"
+}
+if (-not [string]::IsNullOrWhiteSpace($preFingerprint) -and -not [string]::IsNullOrWhiteSpace($postFingerprint) -and $postFingerprint -ne $preFingerprint) {
+  throw "Restore alterou a assinatura dos dados: antes=$preFingerprint depois=$postFingerprint"
 }
 
 Write-Host "[6/6] smoke final"

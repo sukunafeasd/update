@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -180,8 +182,19 @@ func (s *Service) OpsSummary() (model.PanelOpsSummary, error) {
 	if walkErr != nil {
 		return model.PanelOpsSummary{}, walkErr
 	}
+	dbFingerprint, err := s.store.PanelContentFingerprint()
+	if err != nil {
+		return model.PanelOpsSummary{}, err
+	}
+	uploadDigest, err := dirFingerprint(s.uploadsDir)
+	if err != nil {
+		return model.PanelOpsSummary{}, err
+	}
 	summary.UploadFiles = files
 	summary.UploadBytes = bytes
+	summary.DBFingerprint = dbFingerprint
+	summary.UploadDigest = uploadDigest
+	summary.DataFingerprint = hashStrings(dbFingerprint, uploadDigest)
 	summary.Version = s.Version()
 	return summary, nil
 }
@@ -333,6 +346,67 @@ func dirUsage(root string) (int, int64, error) {
 		return 0, 0, fmt.Errorf("walk uploads dir: %w", err)
 	}
 	return files, bytes, nil
+}
+
+func dirFingerprint(root string) (string, error) {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return hashStrings("uploads-empty"), nil
+	}
+	if _, err := os.Stat(root); err != nil {
+		if os.IsNotExist(err) {
+			return hashStrings("uploads-missing"), nil
+		}
+		return "", fmt.Errorf("stat uploads fingerprint dir: %w", err)
+	}
+
+	files := make([]string, 0, 16)
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info == nil || info.IsDir() {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	}); err != nil {
+		return "", fmt.Errorf("walk uploads fingerprint dir: %w", err)
+	}
+	sort.Strings(files)
+
+	hasher := sha256.New()
+	for _, path := range files {
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return "", fmt.Errorf("fingerprint relative path: %w", err)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return "", fmt.Errorf("fingerprint stat file: %w", err)
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("fingerprint read file: %w", err)
+		}
+		_, _ = hasher.Write([]byte(filepath.ToSlash(relative)))
+		_, _ = hasher.Write([]byte{0})
+		_, _ = hasher.Write([]byte(strconv.FormatInt(info.Size(), 10)))
+		_, _ = hasher.Write([]byte{0})
+		sum := sha256.Sum256(raw)
+		_, _ = hasher.Write([]byte(hex.EncodeToString(sum[:])))
+		_, _ = hasher.Write([]byte{0xff})
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func hashStrings(parts ...string) string {
+	hasher := sha256.New()
+	for _, part := range parts {
+		_, _ = hasher.Write([]byte(strings.TrimSpace(part)))
+		_, _ = hasher.Write([]byte{0xff})
+	}
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func addZipJSON(archive *zip.Writer, name string, payload any, now time.Time) error {
@@ -2308,11 +2382,38 @@ func (s *Service) ensureRooms() error {
 		{Slug: "apps-lab", Name: "Apps Lab", Description: "Sala técnica privada do admin pra app, código, terminal e update.", Icon: "🛠️", Category: "dev", Scope: "public", SortOrder: 50, AdminOnly: true},
 	}
 	for _, room := range rooms {
+		existing, err := s.store.GetPanelRoomBySlug(room.Slug)
+		if err == nil && panelRoomMatchesSeed(existing, room, coisasPassword()) {
+			continue
+		}
+		if room.Slug == "coisas" && err == nil && strings.TrimSpace(existing.PasswordHash) != "" && verifyPassword(existing.PasswordHash, coisasPassword()) {
+			room.PasswordHash = existing.PasswordHash
+		}
 		if _, err := s.store.UpsertPanelRoom(room); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func panelRoomMatchesSeed(existing, desired model.PanelRoom, plainPassword string) bool {
+	if existing.ID <= 0 {
+		return false
+	}
+	if strings.TrimSpace(existing.Name) != strings.TrimSpace(desired.Name) ||
+		strings.TrimSpace(existing.Description) != strings.TrimSpace(desired.Description) ||
+		strings.TrimSpace(existing.Icon) != strings.TrimSpace(desired.Icon) ||
+		strings.TrimSpace(strings.ToLower(existing.Category)) != strings.TrimSpace(strings.ToLower(desired.Category)) ||
+		strings.TrimSpace(strings.ToLower(existing.Scope)) != strings.TrimSpace(strings.ToLower(desired.Scope)) ||
+		existing.SortOrder != desired.SortOrder ||
+		existing.AdminOnly != desired.AdminOnly ||
+		existing.VIPOnly != desired.VIPOnly {
+		return false
+	}
+	if strings.TrimSpace(plainPassword) == "" {
+		return strings.TrimSpace(existing.PasswordHash) == strings.TrimSpace(desired.PasswordHash)
+	}
+	return strings.TrimSpace(existing.PasswordHash) != "" && verifyPassword(existing.PasswordHash, plainPassword)
 }
 
 func (s *Service) ensureWelcomeMessages(owner, aiUser model.PanelUser) error {

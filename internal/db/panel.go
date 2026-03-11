@@ -1,10 +1,13 @@
 package db
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"strings"
 	"time"
 
@@ -49,6 +52,82 @@ func (s *Store) PanelOpsSummary(now time.Time, onlineWindow time.Duration) (mode
 	}
 
 	return summary, nil
+}
+
+func (s *Store) PanelContentFingerprint() (string, error) {
+	queries := []struct {
+		name  string
+		query string
+	}{
+		{"panel_users", `SELECT * FROM panel_users ORDER BY id ASC`},
+		{"panel_rooms", `SELECT * FROM panel_rooms ORDER BY id ASC`},
+		{"panel_messages", `SELECT * FROM panel_messages ORDER BY id ASC`},
+		{"panel_room_members", `SELECT * FROM panel_room_members ORDER BY room_id ASC, user_id ASC`},
+		{"panel_message_reactions", `SELECT * FROM panel_message_reactions ORDER BY message_id ASC, user_id ASC, emoji ASC`},
+		{"panel_message_pins", `SELECT * FROM panel_message_pins ORDER BY message_id ASC, pinned_by ASC`},
+		{"panel_message_favorites", `SELECT * FROM panel_message_favorites ORDER BY message_id ASC, user_id ASC`},
+		{"panel_user_blocks", `SELECT * FROM panel_user_blocks ORDER BY blocker_id ASC, blocked_id ASC`},
+		{"panel_user_mutes", `SELECT * FROM panel_user_mutes ORDER BY muter_id ASC, muted_id ASC`},
+		{"panel_events", `SELECT * FROM panel_events ORDER BY id ASC`},
+		{"panel_event_rsvps", `SELECT * FROM panel_event_rsvps ORDER BY event_id ASC, user_id ASC`},
+		{"panel_polls", `SELECT * FROM panel_polls ORDER BY id ASC`},
+		{"panel_poll_options", `SELECT * FROM panel_poll_options ORDER BY id ASC`},
+		{"panel_poll_votes", `SELECT * FROM panel_poll_votes ORDER BY poll_id ASC, user_id ASC`},
+		{"panel_join_requests", `SELECT * FROM panel_join_requests ORDER BY id ASC`},
+	}
+
+	hasher := sha256.New()
+	for _, item := range queries {
+		if err := s.hashQueryFingerprint(hasher, item.name, item.query); err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func (s *Store) hashQueryFingerprint(hasher hash.Hash, name, query string) error {
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return fmt.Errorf("fingerprint %s: %w", name, err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("fingerprint columns %s: %w", name, err)
+	}
+
+	writeFingerprintChunk(hasher, "table", name)
+	for _, column := range columns {
+		writeFingerprintChunk(hasher, "col", column)
+	}
+
+	values := make([]sql.RawBytes, len(columns))
+	dest := make([]any, len(columns))
+	for i := range values {
+		dest[i] = &values[i]
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(dest...); err != nil {
+			return fmt.Errorf("fingerprint row %s: %w", name, err)
+		}
+		writeFingerprintChunk(hasher, "row", name)
+		for i, raw := range values {
+			writeFingerprintChunk(hasher, columns[i], string(raw))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("fingerprint iterate %s: %w", name, err)
+	}
+	return nil
+}
+
+func writeFingerprintChunk(hasher hash.Hash, key, value string) {
+	_, _ = hasher.Write([]byte(key))
+	_, _ = hasher.Write([]byte{0})
+	_, _ = hasher.Write([]byte(value))
+	_, _ = hasher.Write([]byte{0xff})
 }
 
 func (s *Store) countByQuery(query string, args ...any) (int, error) {
@@ -451,7 +530,19 @@ ON CONFLICT(slug) DO UPDATE SET
 	admin_only = excluded.admin_only,
 	vip_only = excluded.vip_only,
 	password_hash = excluded.password_hash,
-	updated_at = excluded.updated_at`,
+	updated_at = CASE
+		WHEN panel_rooms.name <> excluded.name
+		  OR panel_rooms.description <> excluded.description
+		  OR panel_rooms.icon <> excluded.icon
+		  OR panel_rooms.category <> excluded.category
+		  OR panel_rooms.scope <> excluded.scope
+		  OR panel_rooms.sort_order <> excluded.sort_order
+		  OR panel_rooms.admin_only <> excluded.admin_only
+		  OR panel_rooms.vip_only <> excluded.vip_only
+		  OR COALESCE(panel_rooms.password_hash, '') <> COALESCE(excluded.password_hash, '')
+		THEN excluded.updated_at
+		ELSE panel_rooms.updated_at
+	END`,
 		strings.TrimSpace(strings.ToLower(input.Slug)),
 		strings.TrimSpace(input.Name),
 		strings.TrimSpace(input.Description),
