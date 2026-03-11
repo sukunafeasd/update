@@ -2025,6 +2025,17 @@ body.focus-mode #btn-sidebar-open {
 .spotlight-card {
   display: grid;
   gap: 0.72rem;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.direct-card:hover,
+.spotlight-card:hover,
+.media-card:hover,
+.profile-preview-card:hover,
+.social-profile-shell:hover {
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
 }
 
 .direct-card-meta {
@@ -2088,6 +2099,11 @@ body.focus-mode #btn-sidebar-open {
   color: var(--muted);
   line-height: 1.55;
   overflow-wrap: anywhere;
+}
+
+.direct-card .inline-row,
+.spotlight-card .inline-row {
+  align-items: center;
 }
 
 .spotlight-media {
@@ -3090,6 +3106,10 @@ body.inspector-collapsed #inspector-panel {
   min-height: 38px;
 }
 
+.media-caption {
+  max-width: 76ch;
+}
+
 .media-list.file-mode .media-card .inline-row.media-card-pills,
 .media-list.file-mode .media-card .media-caption {
   grid-column: 1 / -1;
@@ -3200,6 +3220,10 @@ body.modal-open .modal {
 
 .social-profile-shell {
   padding-top: 0.15rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+  border-radius: 22px;
+  padding: 0.82rem;
+  border: 1px solid var(--line);
 }
 
 .social-profile-top {
@@ -3353,6 +3377,14 @@ body.modal-open .modal {
 
 .media-modal-meta .info-card {
   padding: 0.95rem 1rem;
+}
+
+.media-modal-meta .info-card strong {
+  font-size: 0.98rem;
+}
+
+.media-modal-meta .info-card p {
+  max-width: 44ch;
 }
 
 .viewer-status-copy,

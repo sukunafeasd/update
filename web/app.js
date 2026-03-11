@@ -1655,6 +1655,7 @@
     summaryActions =
       "<span class='ghost-pill'>" + rooms.length + " conversas</span>" +
       "<span class='ghost-pill'>" + onlinePeers + " online</span>" +
+      "<span class='ghost-pill'>" + unreadTotal + " novas</span>" +
       "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='members'>Membros</button>" +
       "<button class='btn btn-ghost' type='button' data-action='open-inspector-section' data-section='search'>Busca</button>";
     wrap.innerHTML =
@@ -1697,6 +1698,7 @@
             "<div class='inline-row direct-card-meta'>" +
               "<span class='ghost-pill'>" + esc(latestType) + "</span>" +
               "<span class='ghost-pill'>" + esc(room.lastMessageAt ? formatRelative(room.lastMessageAt) : "sem rastro") + "</span>" +
+              (latest.attachment && latest.attachment.sizeBytes ? "<span class='ghost-pill'>" + esc(bytesLabel(latest.attachment.sizeBytes)) + "</span>" : "") +
             "</div>" +
             "<div class='inline-row'>" +
               "<button class='btn btn-ghost' type='button' data-action='jump-room' data-room-id='" + Number(room.id) + "'>" + (unread ? "Voltar pras novas" : "Abrir DM") + "</button>" +
@@ -1721,7 +1723,7 @@
       wrap.innerHTML = "";
       return;
     }
-    attachments = filteredRoomAttachments().slice(0, 3);
+    attachments = filteredRoomAttachments().slice(0, 4);
     wrap.classList.remove("hidden");
     sectionLabel = room && room.slug === "fotos" ? "galeria" : "biblioteca";
     if (!attachments.length) {
@@ -1770,6 +1772,7 @@
             mediaMarkup +
             "<div class='inline-row'>" +
               "<span class='ghost-pill'>" + esc((attachment.kind || "arquivo") + " // " + formatRelative(message.createdAt)) + "</span>" +
+              "<span class='ghost-pill'>" + esc(bytesLabel(attachment.sizeBytes)) + "</span>" +
               "<button class='btn btn-ghost' type='button' data-action='jump-message' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Origem</button>" +
             "</div>" +
           "</article>";
@@ -1849,7 +1852,7 @@
       "<article class='insight-card'><span>viewer</span><strong>" + viewerStats.messageCount + "</strong><p>mensagens tuas carregadas no mapa</p></article>" +
       "<article class='insight-card'><span>midia</span><strong>" + viewerStats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
       "<article class='insight-card'><span>sala ativa</span><strong>" + (roomMessages.length || 0) + "</strong><p>" + esc(room ? displayRoomName(room) : "sem sala em foco") + "</p></article>" +
-      "<article class='insight-card'><span>conexao</span><strong>" + esc(state.connectionStatus || "syncing") + "</strong><p>estado atual do fluxo em tempo real</p></article>";
+      "<article class='insight-card'><span>conexao</span><strong>" + esc(state.connectionStatus || "syncing") + "</strong><p>" + esc(window.Notification ? notificationPermissionLabel() : "push indisponivel") + "</p></article>";
   }
 
   function renderAppCenter() {
