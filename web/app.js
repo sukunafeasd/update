@@ -2309,6 +2309,22 @@
     syncUtilityStripUI();
   }
 
+  function collapseMobileChrome(forceContext) {
+    if (!state.isMobile) {
+      return;
+    }
+    if (!state.utilityStripCollapsed) {
+      state.utilityStripCollapsed = true;
+      saveUtilityStripCollapsed();
+      syncUtilityStripUI();
+    }
+    if (forceContext && !isChatContextForcedOpen() && !isSusView() && !state.chatContextCollapsed) {
+      state.chatContextCollapsed = true;
+      saveChatContextCollapsed();
+      applyChatContextState();
+    }
+  }
+
   function setComposerFocusMode(active) {
     if (!state.compactLayout) {
       document.body.classList.remove("composer-focus");
@@ -6805,6 +6821,9 @@
         }
       }
       ensureFieldVisible(q("composer-input"));
+      window.setTimeout(function() {
+        ensureFieldVisible(q("composer-form"));
+      }, 120);
     });
     q("composer-input").addEventListener("blur", function() {
       window.setTimeout(function() {
@@ -6873,6 +6892,15 @@
         toast(err.message, "err");
       }
     });
+    q("message-stream").addEventListener("scroll", function() {
+      collapseMobileChrome(false);
+    }, { passive: true });
+    q("message-stream").addEventListener("touchstart", function() {
+      collapseMobileChrome(true);
+    }, { passive: true });
+    q("conversation-panel").addEventListener("touchstart", function() {
+      collapseMobileChrome(false);
+    }, { passive: true });
     q("unlock-form").addEventListener("submit", handleUnlockSubmit);
     q("btn-room-action").addEventListener("click", function() {
       var room = activeRoom();
