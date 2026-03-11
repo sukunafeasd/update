@@ -926,6 +926,13 @@
     });
   }
 
+  function roomAttachmentsForPreview(roomId) {
+    var messages = state.messagesByRoom[String(roomId)] || [];
+    return messages.filter(function(message) {
+      return !!message.attachment && !message.blockedByViewer;
+    }).sort(compareAttachmentItems);
+  }
+
   function pendingUploads() {
     return state.pendingUploads || [];
   }
@@ -2637,7 +2644,8 @@
     item.className = "toast " + (tone || "ok");
     item.innerHTML =
       "<span class='toast-icon'>" + esc(icon) + "</span>" +
-      "<div class='toast-copy'><strong>" + esc(label) + "</strong><span>" + esc(text) + "</span></div>";
+      "<div class='toast-copy'><strong>" + esc(label) + "</strong><span>" + esc(text) + "</span></div>" +
+      "<button type='button' class='toast-close' aria-label='Fechar aviso'>x</button>";
     existing = stack.querySelectorAll(".toast");
     while (existing.length >= 4) {
       if (existing[0] && existing[0].parentNode) {
@@ -2646,6 +2654,15 @@
       existing = stack.querySelectorAll(".toast");
     }
     stack.appendChild(item);
+    item.addEventListener("click", function(event) {
+      var close = event.target && event.target.closest ? event.target.closest(".toast-close") : null;
+      if (!close) {
+        return;
+      }
+      if (item.parentNode) {
+        item.parentNode.removeChild(item);
+      }
+    });
     pushActivity(label + ". " + text, tone || "ok");
     playTone(tone || "ok");
     if (tone === "warn") {
@@ -3883,7 +3900,7 @@
   }
 
   function currentPreviewIndex() {
-    var attachments = filteredRoomAttachments();
+    var attachments = roomAttachmentsForPreview(state.mediaPreview && state.mediaPreview.roomId);
     var i;
     if (!state.mediaPreview) {
       return -1;
@@ -3900,6 +3917,7 @@
     var modal = q("media-modal");
     var stage = q("media-modal-stage");
     var meta = q("media-modal-meta");
+    var filmstrip = q("media-modal-filmstrip");
     var originButton = q("media-modal-origin");
     var current;
     var attachment;
@@ -3912,6 +3930,9 @@
       modal.classList.add("hidden");
       stage.innerHTML = "";
       meta.innerHTML = "";
+      if (filmstrip) {
+        filmstrip.innerHTML = "";
+      }
       if (originButton) {
         originButton.disabled = true;
         originButton.removeAttribute("data-room-id");
@@ -3927,7 +3948,7 @@
     }
     attachment = current.attachment;
     var attachmentUrl = safeAttachmentUrl(attachment.url);
-    sameRoomAttachments = filteredRoomAttachments();
+    sameRoomAttachments = roomAttachmentsForPreview(current.roomId);
     index = currentPreviewIndex();
     room = roomById(current.roomId);
     excerpt = String(current.body || "").trim();
@@ -3976,6 +3997,23 @@
           "<span class='ghost-pill'>" + esc(bytesLabel(attachment.sizeBytes)) + "</span>" +
         "</div>" +
       "</article>";
+    if (filmstrip) {
+      var windowed = sameRoomAttachments.slice(Math.max(0, index - 2), Math.min(sameRoomAttachments.length, index + 4));
+      filmstrip.innerHTML = windowed.map(function(item) {
+        var itemAttachment = item.attachment || {};
+        var itemUrl = safeAttachmentUrl(itemAttachment.url);
+        var active = Number(item.id) === Number(current.id);
+        var thumb = itemUrl && itemAttachment.kind === "image"
+          ? "<img alt='" + esc(itemAttachment.name || "midia") + "' src='" + esc(itemUrl) + "' />"
+          : (itemUrl && itemAttachment.kind === "video"
+            ? "<video preload='metadata' muted src='" + esc(itemUrl) + "'></video>"
+            : "<div class='media-film-fallback'>" + esc((itemAttachment.kind || "arquivo").slice(0, 6)) + "</div>");
+        return "<button type='button' class='media-film-item" + (active ? " active" : "") + "' data-action='preview-attachment' data-room-id='" + Number(item.roomId) + "' data-message-id='" + Number(item.id) + "'>" +
+          thumb +
+          "<span class='media-film-label'>" + esc(itemAttachment.kind || "arquivo") + "</span>" +
+        "</button>";
+      }).join("");
+    }
     q("media-modal-download").href = attachmentUrl || "#";
     q("media-modal-prev").disabled = index <= 0;
     q("media-modal-next").disabled = index < 0 || index >= (sameRoomAttachments.length - 1);
@@ -4000,7 +4038,7 @@
   }
 
   function stepMediaPreview(delta) {
-    var items = filteredRoomAttachments();
+    var items = roomAttachmentsForPreview(state.mediaPreview && state.mediaPreview.roomId);
     var index = currentPreviewIndex();
     var next;
     if (index < 0) {
@@ -5460,6 +5498,7 @@
     var theme = q("profile-theme").value || "matrix";
     var bannerPreset = q("profile-banner-preset").value || (state.viewer && state.viewer.bannerPreset) || "grid";
     var accent = q("profile-accent").value || (state.viewer && state.viewer.accentColor) || themeAccent(theme);
+    var badgesWrap = q("profile-preview-badges");
     if (!avatarWrap) {
       return;
     }
@@ -5476,6 +5515,13 @@
     q("profile-preview-status").textContent = statusText || "Sem status customizado.";
     q("profile-preview-status").classList.toggle("hidden", !statusText);
     q("profile-preview-bio").textContent = bio || "Tua bio aparece aqui antes de salvar.";
+    if (badgesWrap) {
+      badgesWrap.innerHTML =
+        "<span class='ghost-pill'>" + esc(themeLabel(theme)) + "</span>" +
+        "<span class='ghost-pill'>" + esc(bannerUrl ? "banner proprio" : bannerLabel(bannerPreset)) + "</span>" +
+        "<span class='ghost-pill'>" + esc(status || "online") + "</span>" +
+        "<span class='ghost-pill'>" + esc(avatarUrl ? "avatar custom" : "avatar base") + "</span>";
+    }
     if (insightWrap) {
       var stats = currentViewerLocalStats();
       insightWrap.innerHTML =
@@ -5515,6 +5561,7 @@
     var actionDM = q("member-action-dm");
     var actionBlock = q("member-action-block");
     var actionMute = q("member-action-mute");
+    var relationshipWrap = q("member-relationship-pills");
     var moderationWrap = q("member-moderation");
     var roleSelect = q("member-role-select");
     var stats;
@@ -5546,6 +5593,14 @@
       : (profile.user.blockedByViewer
         ? "Tu bloqueou esse usuario."
         : (profile.user.mutedByViewer ? "Tu silenciou esse usuario." : "Sem bloqueio ou silencio ativo."));
+    if (relationshipWrap) {
+      var sharedCount = sharedVisibleRoomsForUser(profile.user.userId || profile.user.id).length;
+      relationshipWrap.innerHTML =
+        "<span class='ghost-pill'>" + esc(profile.user.online ? "na base agora" : "offline") + "</span>" +
+        "<span class='ghost-pill'>" + esc(sharedCount + " salas em comum") + "</span>" +
+        "<span class='ghost-pill'>" + esc(profile.canDm ? "DM liberada" : "DM travada") + "</span>" +
+        "<span class='ghost-pill'>" + esc(profile.user.hasBlockedViewer ? "te bloqueou" : (profile.user.blockedByViewer ? "bloqueado" : "contato livre")) + "</span>";
+    }
     if (banner) {
       banner.style.background = panelBannerStyle(profile.user.theme || "matrix", profile.user.accentColor || themeAccent(profile.user.theme || "matrix"), profile.user.bannerPreset || "grid", profile.user.bannerUrl || "");
     }

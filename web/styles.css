@@ -537,7 +537,7 @@ pre,
 
 .toast {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0.55rem;
   padding: 0.9rem 1rem;
   border-radius: 16px;
@@ -564,6 +564,27 @@ pre,
   display: grid;
   gap: 0.16rem;
   min-width: 0;
+}
+
+.toast-close {
+  align-self: start;
+  justify-self: end;
+  width: 1.8rem;
+  min-width: 1.8rem;
+  min-height: 1.8rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.toast-close:hover,
+.toast-close:focus-visible {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .toast strong {
@@ -3216,6 +3237,19 @@ body.inspector-collapsed #inspector-panel {
   letter-spacing: 0.01em;
 }
 
+.profile-preview-badges,
+.member-relationship-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.profile-preview-badges .ghost-pill,
+.member-relationship-pills .ghost-pill {
+  min-height: 28px;
+}
+
 .profile-preview-copy span,
 .social-profile-copy span {
   overflow-wrap: anywhere;
@@ -3373,9 +3407,81 @@ body.modal-open .modal {
   min-height: 0;
 }
 
+.media-modal-view {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+}
+
 .media-modal-stage,
 .media-modal-meta {
   min-height: 0;
+}
+
+.media-modal-filmstrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  gap: 0.55rem;
+  min-height: 0;
+}
+
+.media-film-item {
+  position: relative;
+  min-height: 72px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.025);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.media-film-item.active {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.media-film-item:hover,
+.media-film-item:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.media-film-item img,
+.media-film-item video {
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+  object-fit: cover;
+  display: block;
+}
+
+.media-film-fallback {
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.media-film-label {
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0.32rem;
+  padding: 0.18rem 0.34rem;
+  border-radius: 999px;
+  background: rgba(3, 9, 14, 0.76);
+  color: #eef9ff;
+  font-size: 0.68rem;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .media-modal-stage {
@@ -5701,10 +5807,26 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     gap: 0.55rem;
   }
 
+  body.mobile-clean .media-modal-view {
+    gap: 0.46rem;
+  }
+
   body.mobile-clean .media-modal-stage {
     min-height: 34vh;
     max-height: 46vh;
     border-radius: 16px;
+  }
+
+  body.mobile-clean .media-modal-filmstrip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.42rem;
+  }
+
+  body.mobile-clean .media-film-item,
+  body.mobile-clean .media-film-item img,
+  body.mobile-clean .media-film-item video,
+  body.mobile-clean .media-film-fallback {
+    min-height: 60px;
   }
 
   body.mobile-clean .media-modal-stage img,
@@ -5753,6 +5875,17 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     font-size: 0.96rem;
   }
 
+  body.mobile-clean .profile-preview-badges,
+  body.mobile-clean .member-relationship-pills {
+    gap: 0.34rem;
+  }
+
+  body.mobile-clean .profile-preview-badges .ghost-pill,
+  body.mobile-clean .member-relationship-pills .ghost-pill {
+    min-height: 26px;
+    font-size: 0.72rem;
+  }
+
   body.mobile-clean .media-card .attachment-actions .btn {
     min-height: 36px;
   }
@@ -5762,6 +5895,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   body.mobile-clean .event-list,
   body.mobile-clean .poll-list {
     max-height: min(24vh, 210px);
+  }
+
+  body.mobile-clean .toast {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  body.mobile-clean .toast-close {
+    grid-column: 2;
+    justify-self: end;
   }
 }
 
