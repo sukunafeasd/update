@@ -152,7 +152,9 @@
     chatContextCollapsed: false,
     emergencyMode: false,
     desktopSidebarCollapsed: false,
-    desktopInspectorCollapsed: false
+    desktopInspectorCollapsed: false,
+    lastToastKey: "",
+    lastToastAt: 0
   };
 
   function readStoredSessionId() {
@@ -2557,9 +2559,16 @@
     var stack = q("toast-stack");
     var icon = "\uD83D\uDCE1";
     var label = "Painel Dief";
+    var toastKey = String(tone || "ok") + "::" + String(text || "");
+    var existing;
     if (!stack) {
       return;
     }
+    if (state.lastToastKey === toastKey && Date.now() - Number(state.lastToastAt || 0) < 1400) {
+      return;
+    }
+    state.lastToastKey = toastKey;
+    state.lastToastAt = Date.now();
     if (tone === "ok") {
       label = "Bah, ficou tinindo";
       icon = "\uD83D\uDE0E";
@@ -2575,6 +2584,13 @@
     item.innerHTML =
       "<span class='toast-icon'>" + esc(icon) + "</span>" +
       "<div class='toast-copy'><strong>" + esc(label) + "</strong><span>" + esc(text) + "</span></div>";
+    existing = stack.querySelectorAll(".toast");
+    while (existing.length >= 4) {
+      if (existing[0] && existing[0].parentNode) {
+        existing[0].parentNode.removeChild(existing[0]);
+      }
+      existing = stack.querySelectorAll(".toast");
+    }
     stack.appendChild(item);
     pushActivity(label + ". " + text, tone || "ok");
     playTone(tone || "ok");

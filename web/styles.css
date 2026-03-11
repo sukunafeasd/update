@@ -506,6 +506,7 @@ pre,
   max-height: calc(var(--viewport-height) - 2rem);
   overflow: auto;
   overscroll-behavior: contain;
+  pointer-events: none;
 }
 
 #sus-omen {
@@ -536,7 +537,8 @@ pre,
 
 .toast {
   display: grid;
-  gap: 0.25rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
   padding: 0.9rem 1rem;
   border-radius: 16px;
   border: 1px solid var(--line);
@@ -544,6 +546,23 @@ pre,
   box-shadow: var(--shadow);
   animation: toast-in 160ms ease;
   border-left-width: 4px;
+  pointer-events: auto;
+}
+
+.toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  min-width: 1.35rem;
+  padding-top: 0.03rem;
+  font-size: 1rem;
+}
+
+.toast-copy {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
 }
 
 .toast strong {
@@ -1337,6 +1356,14 @@ body.sidebar-collapsed #channel-panel {
   padding-right: 0.15rem;
 }
 
+.activity-feed,
+.roster-list,
+.event-list,
+.poll-list {
+  max-height: min(34vh, 320px);
+  scrollbar-gutter: stable;
+}
+
 .presence-chip,
 .presence-item,
 .activity-item,
@@ -1445,6 +1472,7 @@ body.sidebar-collapsed #channel-panel {
 .owner-admin-grid {
   display: grid;
   gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .owner-admin-panel {
@@ -1471,6 +1499,16 @@ body.sidebar-collapsed #channel-panel {
 
 .roster-actions select {
   min-width: 120px;
+}
+
+.join-request-item,
+.roster-item,
+.event-card,
+.poll-card,
+.activity-item,
+.media-card,
+.search-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .roster-note {
@@ -1619,6 +1657,7 @@ body.sidebar-collapsed #channel-panel {
   justify-content: flex-start;
   align-items: stretch;
   min-width: 0;
+  align-self: stretch;
 }
 
 .topbar-actions {
@@ -3037,6 +3076,7 @@ body.inspector-collapsed #inspector-panel {
   border-radius: 18px;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .profile-preview-copy {
@@ -3096,6 +3136,10 @@ body.modal-open .modal {
 .social-profile-grid {
   display: grid;
   gap: 0.85rem;
+}
+
+.social-profile-shell {
+  padding-top: 0.15rem;
 }
 
 .social-profile-top {
@@ -4617,6 +4661,39 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 }
 
 @media (max-width: 760px) {
+  #toast-stack {
+    top: auto;
+    right: 0.55rem;
+    left: 0.55rem;
+    bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: 34vh;
+  }
+
+  .toast {
+    padding: 0.76rem 0.82rem;
+    border-radius: 14px;
+  }
+
+  .toast strong {
+    font-size: 0.84rem;
+  }
+
+  .toast span {
+    font-size: 0.76rem;
+  }
+
+  .owner-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-feed,
+  .roster-list,
+  .event-list,
+  .poll-list {
+    max-height: min(28vh, 240px);
+  }
+
   body.mobile-clean #login-view {
     display: flex;
     align-items: stretch;
@@ -5425,6 +5502,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     gap: 0.72rem;
   }
 
+  body.mobile-clean .profile-preview-card,
+  body.mobile-clean .social-profile-shell {
+    gap: 0.62rem;
+  }
+
   body.mobile-clean .social-profile-avatar {
     width: 58px;
     height: 58px;
@@ -5468,6 +5550,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     bottom: 0;
     background: linear-gradient(180deg, rgba(10, 18, 14, 0), rgba(10, 18, 14, 0.96) 26%);
     padding-top: 0.25rem;
+  }
+
+  body.mobile-clean .activity-feed,
+  body.mobile-clean .roster-list,
+  body.mobile-clean .event-list,
+  body.mobile-clean .poll-list {
+    max-height: min(24vh, 210px);
   }
 }
 
