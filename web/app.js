@@ -1994,25 +1994,41 @@
 
   function notificationPermissionLabel() {
     if (!window.Notification) {
-      return "Push indispon";
+      return "Push indisponivel";
     }
     if (Notification.permission === "granted") {
-      return "Push on";
+      return "Push ativo";
     }
     if (Notification.permission === "denied") {
       return "Push negado";
     }
-    return "Push off";
+    return "Ativar push";
   }
 
   function syncBrowserNotifyButton() {
     var button = q("btn-browser-notify");
+    var stateLabel = "unsupported";
     if (!button) {
       return;
+    }
+    if (window.Notification && Notification.permission === "granted") {
+      stateLabel = "granted";
+    } else if (window.Notification && Notification.permission === "denied") {
+      stateLabel = "denied";
+    } else if (window.Notification) {
+      stateLabel = "default";
     }
     button.textContent = notificationPermissionLabel();
     button.disabled = !window.Notification;
     button.classList.toggle("active", !!window.Notification && Notification.permission === "granted");
+    button.setAttribute("data-push-state", stateLabel);
+    button.title = !window.Notification
+      ? "Teu navegador nao suporta push por aqui."
+      : (Notification.permission === "granted"
+        ? "Push ligado nesse dispositivo."
+        : (Notification.permission === "denied"
+          ? "Push bloqueado nas permissoes do navegador."
+          : "Clica para pedir permissao de push."));
   }
 
   function syncMobileActionButtons() {
@@ -3877,14 +3893,23 @@
     var modal = q("media-modal");
     var stage = q("media-modal-stage");
     var meta = q("media-modal-meta");
+    var originButton = q("media-modal-origin");
     var current;
     var attachment;
     var sameRoomAttachments;
     var index;
+    var room;
+    var excerpt;
+    var attachmentType;
     if (!state.mediaPreview) {
       modal.classList.add("hidden");
       stage.innerHTML = "";
       meta.innerHTML = "";
+      if (originButton) {
+        originButton.disabled = true;
+        originButton.removeAttribute("data-room-id");
+        originButton.removeAttribute("data-message-id");
+      }
       return;
     }
     current = findMessageInRoom(state.mediaPreview.roomId, state.mediaPreview.messageId);
@@ -3897,6 +3922,15 @@
     var attachmentUrl = safeAttachmentUrl(attachment.url);
     sameRoomAttachments = filteredRoomAttachments();
     index = currentPreviewIndex();
+    room = roomById(current.roomId);
+    excerpt = String(current.body || "").trim();
+    attachmentType = attachment.kind === "image"
+      ? "Imagem"
+      : (attachment.kind === "video"
+        ? "Video"
+        : (attachment.kind === "audio"
+          ? "Audio"
+          : "Arquivo"));
     q("media-modal-title").textContent = attachment.name || "Preview de midia";
     if (attachmentUrl && attachment.kind === "image") {
       stage.innerHTML = "<img alt='" + esc(attachment.name) + "' src='" + esc(attachmentUrl) + "' />";
@@ -3911,17 +3945,30 @@
     }
     meta.innerHTML =
       "<article class='info-card'>" +
-        "<span>Tipo</span><strong>" + esc(attachment.kind || "arquivo") + "</strong>" +
+        "<span>Tipo</span><strong>" + esc(attachmentType) + "</strong>" +
         "<p>" + esc(attachment.contentType || "sem content-type") + "</p>" +
       "</article>" +
       "<article class='info-card'>" +
         "<span>Tamanho</span><strong>" + esc(bytesLabel(attachment.sizeBytes)) + "</strong>" +
         "<p>" + esc(current.authorName || "autor desconhecido") + " // " + esc(formatDateTime(current.createdAt)) + "</p>" +
       "</article>" +
-      ((attachment.width || attachment.height) ? ("<article class='info-card'><span>Resolucao</span><strong>" + esc((attachment.width || 0) + " x " + (attachment.height || 0)) + "</strong><p>" + esc(attachment.extension || "") + "</p></article>") : "");
+      "<article class='info-card media-origin-card'>" +
+        "<span>Sala</span><strong>" + esc(room ? displayRoomName(room) : "Sem sala") + "</strong>" +
+        "<p>" + esc(excerpt ? excerpt.slice(0, 160) : "Sem legenda na mensagem de origem.") + "</p>" +
+      "</article>" +
+      ((attachment.width || attachment.height) ? ("<article class='info-card'><span>Resolucao</span><strong>" + esc((attachment.width || 0) + " x " + (attachment.height || 0)) + "</strong><p>" + esc(attachment.extension || "") + "</p></article>") : "") +
+      "<article class='info-card media-origin-card soft'>" +
+        "<span>Fluxo</span><strong>" + esc(index + 1) + " / " + esc(sameRoomAttachments.length || 1) + "</strong>" +
+        "<p>" + esc(room && room.summary ? room.summary : "Preview vivo do historico dessa sala.") + "</p>" +
+      "</article>";
     q("media-modal-download").href = attachmentUrl || "#";
     q("media-modal-prev").disabled = index <= 0;
     q("media-modal-next").disabled = index < 0 || index >= (sameRoomAttachments.length - 1);
+    if (originButton) {
+      originButton.disabled = false;
+      originButton.setAttribute("data-room-id", Number(current.roomId));
+      originButton.setAttribute("data-message-id", Number(current.id));
+    }
     modal.classList.remove("hidden");
     syncTransientLayoutState();
   }
@@ -5409,7 +5456,8 @@
         "<article class='insight-card'><span>midia</span><strong>" + stats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
         "<article class='insight-card'><span>salas</span><strong>" + stats.roomCount + "</strong><p>salas onde tua marca apareceu</p></article>" +
         "<article class='insight-card'><span>tom</span><strong>" + esc(themeLabel(theme)) + "</strong><p>" + esc(statusText || "sem status customizado") + "</p></article>" +
-        "<article class='insight-card'><span>capa</span><strong>" + esc(bannerUrl ? "Imagem propria" : bannerLabel(bannerPreset)) + "</strong><p>" + esc(bannerUrl ? "banner enviado pro cartao publico" : "banner do teu cartao publico") + "</p></article>";
+        "<article class='insight-card'><span>capa</span><strong>" + esc(bannerUrl ? "Imagem propria" : bannerLabel(bannerPreset)) + "</strong><p>" + esc(bannerUrl ? "banner enviado pro cartao publico" : "banner do teu cartao publico") + "</p></article>" +
+        "<article class='insight-card'><span>presenca</span><strong>" + esc(String(status || "online")) + "</strong><p>" + esc(bio ? "perfil com bio afinada" : "da pra deixar a bio mais viva") + "</p></article>";
     }
   }
 
@@ -7053,6 +7101,15 @@
     });
     q("media-modal-prev").addEventListener("click", function() { stepMediaPreview(-1); });
     q("media-modal-next").addEventListener("click", function() { stepMediaPreview(1); });
+    q("media-modal-origin").addEventListener("click", function() {
+      var roomId = Number(q("media-modal-origin").getAttribute("data-room-id") || 0);
+      var messageId = Number(q("media-modal-origin").getAttribute("data-message-id") || 0);
+      if (!roomId || !messageId) {
+        return;
+      }
+      closeModal("media-modal");
+      jumpToMessage(roomId, messageId);
+    });
     q("btn-refresh-logs").addEventListener("click", loadLogs);
     q("btn-sidebar-peek").addEventListener("click", openSidebar);
     q("btn-sidebar-close").addEventListener("click", closeSidebar);
