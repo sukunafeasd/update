@@ -3817,11 +3817,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     min-height: calc(var(--viewport-height) - 8rem);
     max-height: none;
     overflow: visible;
+    gap: 0.55rem;
   }
 
   #message-stream {
-    min-height: 32vh;
+    min-height: 40vh;
     max-height: none;
+    padding-bottom: 0.15rem;
   }
 
   .login-download-actions {
@@ -3877,7 +3879,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .topbar-main {
-    gap: 0.55rem;
+    gap: 0.42rem;
     border-radius: 20px;
   }
 
@@ -3906,6 +3908,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   .room-header-top {
     align-items: flex-start;
+    gap: 0.6rem;
   }
 
   .profile-preview-banner,
@@ -3947,6 +3950,12 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding-bottom: 0.15rem;
     margin-inline: -0.1rem;
     padding-inline: 0.1rem;
+  }
+
+  .room-pill-row .badge {
+    min-height: 26px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.72rem;
   }
 
   .sidebar-scroll {
@@ -3996,8 +4005,26 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .composer-shell textarea {
-    min-height: 88px;
-    max-height: 24dvh;
+    min-height: 80px;
+    max-height: 22dvh;
+  }
+
+  #composer-form {
+    position: static;
+    align-self: stretch;
+    z-index: auto;
+    padding-top: 0;
+    background: transparent;
+  }
+
+  .composer-shell {
+    padding: 0.72rem;
+    border-radius: 18px;
+  }
+
+  .composer-actions {
+    margin-top: 0.6rem;
+    gap: 0.6rem;
   }
 
   .pending-upload-row,
@@ -4136,6 +4163,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #conversation-panel {
     padding: 0.72rem;
+    gap: 0.45rem;
   }
 
   .topbar-utility-strip {
@@ -4171,12 +4199,29 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     font-size: 1rem;
   }
 
+  .room-pill-row {
+    gap: 0.3rem;
+  }
+
   .conversation-context-shell {
     padding: 0.52rem 0.56rem;
   }
 
   .conversation-context-copy strong {
     font-size: 0.9rem;
+  }
+
+  #message-stream {
+    min-height: 46vh;
+  }
+
+  #typing-indicator {
+    font-size: 0.8rem;
+  }
+
+  .composer-shell textarea {
+    min-height: 74px;
+    max-height: 18dvh;
   }
 
   .room-item-top {
