@@ -1843,6 +1843,10 @@
     var room = activeRoom();
     var roomMessages = currentRoomMessages();
     var viewerStats = currentViewerLocalStats();
+    var latest = room ? (state.latestByRoom[String(room.id)] || null) : null;
+    var latestLabel = latest
+      ? ((latest.authorName || "base") + " // " + formatRelative(latest.createdAt))
+      : "sem rastro recente";
     if (!wrap) {
       return;
     }
@@ -1851,7 +1855,7 @@
       "<article class='insight-card'><span>pedidos</span><strong>" + Number(state.pendingJoinCount || 0) + "</strong><p>gente pedindo guarida na base</p></article>" +
       "<article class='insight-card'><span>viewer</span><strong>" + viewerStats.messageCount + "</strong><p>mensagens tuas carregadas no mapa</p></article>" +
       "<article class='insight-card'><span>midia</span><strong>" + viewerStats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
-      "<article class='insight-card'><span>sala ativa</span><strong>" + (roomMessages.length || 0) + "</strong><p>" + esc(room ? displayRoomName(room) : "sem sala em foco") + "</p></article>" +
+      "<article class='insight-card'><span>sala ativa</span><strong>" + (roomMessages.length || 0) + "</strong><p>" + esc(room ? displayRoomName(room) : "sem sala em foco") + " // " + esc(latestLabel) + "</p></article>" +
       "<article class='insight-card'><span>conexao</span><strong>" + esc(state.connectionStatus || "syncing") + "</strong><p>" + esc(window.Notification ? notificationPermissionLabel() : "push indisponivel") + "</p></article>";
   }
 
@@ -3958,11 +3962,19 @@
       "<article class='info-card media-origin-card'>" +
         "<span>Sala</span><strong>" + esc(room ? displayRoomName(room) : "Sem sala") + "</strong>" +
         "<p>" + esc(excerpt ? excerpt.slice(0, 160) : "Sem legenda na mensagem de origem.") + "</p>" +
+        "<div class='inline-row media-origin-pills'>" +
+          "<span class='ghost-pill'>" + esc(current.authorName || "autor desconhecido") + "</span>" +
+          "<span class='ghost-pill'>" + esc(formatRelative(current.createdAt)) + "</span>" +
+        "</div>" +
       "</article>" +
       ((attachment.width || attachment.height) ? ("<article class='info-card'><span>Resolucao</span><strong>" + esc((attachment.width || 0) + " x " + (attachment.height || 0)) + "</strong><p>" + esc(attachment.extension || "") + "</p></article>") : "") +
       "<article class='info-card media-origin-card soft'>" +
         "<span>Fluxo</span><strong>" + esc(index + 1) + " / " + esc(sameRoomAttachments.length || 1) + "</strong>" +
         "<p>" + esc(room && room.summary ? room.summary : "Preview vivo do historico dessa sala.") + "</p>" +
+        "<div class='inline-row media-origin-pills'>" +
+          "<span class='ghost-pill'>" + esc(attachment.kind || "arquivo") + "</span>" +
+          "<span class='ghost-pill'>" + esc(bytesLabel(attachment.sizeBytes)) + "</span>" +
+        "</div>" +
       "</article>";
     q("media-modal-download").href = attachmentUrl || "#";
     q("media-modal-prev").disabled = index <= 0;
@@ -4619,6 +4631,8 @@
       card.className = "media-card";
       var size = bytesLabel(attachment.sizeBytes);
       var dims = attachment.width && attachment.height ? (attachment.width + "x" + attachment.height) : "";
+      var kindCopy = String(attachment.kind || "arquivo");
+      var excerpt = String(message.body || "").trim();
       card.innerHTML =
         "<div class='media-card-head'><strong>" + esc(attachment.name) + "</strong><span class='ghost-pill kind-pill'>" + esc(attachment.kind || "arquivo") + "</span></div>" +
         (attachmentUrl && attachment.kind === "image" ? "<button type='button' class='media-thumb' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'><img alt='" + esc(attachment.name) + "' src='" + esc(attachmentUrl) + "' /></button>" : "") +
@@ -4631,9 +4645,19 @@
           "<span class='ghost-pill'>" + esc(message.authorName || "alguem") + "</span>" +
           "<span class='ghost-pill'>" + esc(formatRelative(message.createdAt)) + "</span>" +
         "</div>" +
-        (message.body ? "<p class='media-caption'>" + esc(String(message.body).slice(0, 140)) + "</p>" : "") +
+        (excerpt ? "<p class='media-caption'>" + esc(excerpt.slice(0, 140)) + "</p>" : "") +
+        "<div class='media-card-origin'>" +
+          "<div class='media-card-origin-copy'>" +
+            "<strong>" + esc(room ? displayRoomName(room) : "Sem sala") + "</strong>" +
+            "<span>" + esc(kindCopy + " // " + bytesLabel(attachment.sizeBytes)) + "</span>" +
+          "</div>" +
+          "<div class='inline-row media-card-flow'>" +
+            (attachment.extension ? "<span class='ghost-pill'>" + esc(String(attachment.extension).toUpperCase()) + "</span>" : "") +
+            (attachment.contentType ? "<span class='ghost-pill'>" + esc(attachment.contentType) + "</span>" : "") +
+          "</div>" +
+        "</div>" +
         "<div class='attachment-actions'>" +
-          "<button class='btn btn-ghost' type='button' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Abrir</button>" +
+          "<button class='btn btn-primary' type='button' data-action='preview-attachment' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Abrir</button>" +
           "<button class='btn btn-ghost' type='button' data-action='jump-message' data-room-id='" + Number(message.roomId) + "' data-message-id='" + Number(message.id) + "'>Origem</button>" +
           (attachmentUrl ? "<a class='btn btn-ghost' href='" + esc(attachmentUrl) + "' target='_blank' rel='noreferrer'>Baixar</a>" : "") +
         "</div>";
@@ -5540,7 +5564,7 @@
           var items = (state.messagesByRoom[String(room.id)] || []).filter(function(message) {
             return Number(message.authorId || message.userId || 0) === Number(profile.user.userId || profile.user.id);
           }).length;
-          return "<span class='member-shared-room'><strong>" + esc(displayRoomName(room)) + "</strong><span>" + items + " msgs</span></span>";
+          return "<button class='member-shared-room' type='button' data-action='jump-room' data-room-id='" + Number(room.id) + "'><strong>" + esc(displayRoomName(room)) + "</strong><span>" + items + " msgs</span></button>";
         }).join("") + (sharedRooms.length > 4 ? "<span class='member-shared-room more'>+" + (sharedRooms.length - 4) + " salas em comum</span>" : "");
       }
     }
