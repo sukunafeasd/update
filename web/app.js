@@ -2363,14 +2363,33 @@
     q("btn-inspector-peek").classList.toggle("hidden", !document.body.classList.contains("inspector-collapsed"));
   }
 
-  function ensureActiveNavVisible() {
+  function ensureActiveNavVisible(force) {
+    var list = document.querySelector("#channel-panel .sidebar-scroll");
     var active = document.querySelector(".room-item.active");
+    var activeKey;
+    var listRect;
+    var itemRect;
+    var nextTop;
     if (!active) {
       return;
     }
-    window.requestAnimationFrame(function() {
-      safeScrollIntoView(active, { block: "nearest", inline: "nearest", behavior: "smooth" });
-    });
+    activeKey = String(active.getAttribute("data-nav-id") || active.getAttribute("data-room-id") || "");
+    if (!force && state.lastEnsuredNavKey === activeKey) {
+      return;
+    }
+    if (!list) {
+      state.lastEnsuredNavKey = activeKey;
+      return;
+    }
+    listRect = list.getBoundingClientRect();
+    itemRect = active.getBoundingClientRect();
+    if (!force && itemRect.top >= listRect.top + 8 && itemRect.bottom <= listRect.bottom - 8) {
+      state.lastEnsuredNavKey = activeKey;
+      return;
+    }
+    nextTop = list.scrollTop + (itemRect.top - listRect.top) - Math.max(10, Math.round((listRect.height - itemRect.height) / 2));
+    list.scrollTop = Math.max(0, nextTop);
+    state.lastEnsuredNavKey = activeKey;
   }
 
   function openSidebar() {
@@ -2388,6 +2407,7 @@
     document.body.classList.add("sidebar-open");
     document.body.classList.remove("sidebar-collapsed");
     syncBackdrop();
+    ensureActiveNavVisible(true);
   }
 
   function closeSidebar() {
@@ -3052,7 +3072,6 @@
     syncDocumentTitle();
     syncUtilityStripUI();
     syncPeekButtons();
-    ensureActiveNavVisible();
   }
 
   function renderViewer() {
@@ -4760,6 +4779,7 @@
     saveStoredActiveNavId(state.activeNavId);
     renderRooms();
     renderRails();
+    ensureActiveNavVisible(true);
     renderHeaderAndRoomState();
     renderDashboard();
     renderAppsLabDeck();
@@ -4800,6 +4820,7 @@
       saveStoredActiveRoomId(0);
       renderRooms();
       renderRails();
+      ensureActiveNavVisible(true);
       renderHeaderAndRoomState();
       renderDashboard();
       renderAppsLabDeck();
@@ -4838,6 +4859,7 @@
       saveStoredActiveRoomId(0);
       renderRooms();
       renderRails();
+      ensureActiveNavVisible(true);
       renderHeaderAndRoomState();
       renderDashboard();
       renderAppsLabDeck();

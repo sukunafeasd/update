@@ -815,7 +815,7 @@ body.keyboard-open.compact #topbar {
 }
 
 body.keyboard-open.compact #panel-view {
-  overflow: auto;
+  overflow: hidden;
   padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
 }
 
@@ -826,6 +826,30 @@ body.keyboard-open.compact #composer-form {
 
 body.keyboard-open.compact .composer-shell textarea {
   max-height: 22dvh;
+}
+
+body.keyboard-open.compact #workspace,
+body.keyboard-open.compact #workspace-grid,
+body.keyboard-open.compact #conversation-panel {
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+
+body.keyboard-open.compact #message-stream {
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+body.keyboard-open.compact .topbar-utility-strip,
+body.keyboard-open.compact #conversation-context-shell,
+body.keyboard-open.compact #room-dashboard,
+body.keyboard-open.compact #room-state,
+body.keyboard-open.compact #pins-strip,
+body.keyboard-open.compact #unread-banner,
+body.keyboard-open.compact #typing-indicator {
+  display: none !important;
 }
 
 #panel-view {
