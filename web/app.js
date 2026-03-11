@@ -2358,6 +2358,12 @@
       closeSidebar();
       closeInspector();
       document.body.classList.add("composer-focus");
+      if (state.isMobile) {
+        try {
+          q("panel-view").scrollTop = 0;
+          window.scrollTo(0, 0);
+        } catch (e) {}
+      }
       return;
     }
     document.body.classList.remove("composer-focus");
@@ -2379,6 +2385,15 @@
     drawerOpen = !!(panelVisible && state.compactLayout && (document.body.classList.contains("sidebar-open") || document.body.classList.contains("inspector-open")));
     document.body.classList.toggle("modal-open", !!(hasModal && (loginVisible || panelVisible)));
     document.body.classList.toggle("drawer-open", drawerOpen);
+  }
+
+  function blurInteractiveTarget(target) {
+    if (!target || typeof target.blur !== "function") {
+      return;
+    }
+    try {
+      target.blur();
+    } catch (e) {}
   }
 
   function syncBackdrop() {
@@ -7141,10 +7156,12 @@
       }
 
       if (target.hasAttribute("data-nav-id")) {
+        blurInteractiveTarget(target);
         selectPrimaryNav(target.getAttribute("data-nav-id"));
         return;
       }
       if (target.hasAttribute("data-room-id") && target.classList.contains("room-item")) {
+        blurInteractiveTarget(target);
         selectRoom(Number(target.getAttribute("data-room-id")));
         return;
       }
@@ -7190,7 +7207,7 @@
           toast("Abre uma conversa liberada antes de responder, vivente.", "warn");
         } else {
           q("composer-input").focus();
-          safeScrollIntoView(q("composer-input"), { block: "nearest", behavior: "smooth" });
+          ensureFieldVisible(q("composer-input"));
         }
       } else if (action === "trigger-attach") {
         if (q("composer-form").classList.contains("hidden")) {
