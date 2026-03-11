@@ -3747,11 +3747,23 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   #login-view {
     padding: 1rem;
     align-items: start;
+    justify-content: flex-start;
   }
 
   #panel-view {
     padding: 0.65rem;
     padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  #topbar,
+  #conversation-panel,
+  #channel-panel,
+  #inspector-panel,
+  .topbar-main,
+  .topbar-actions,
+  .conversation-context-shell {
+    background-color: rgba(10, 18, 14, 0.98);
+    backdrop-filter: blur(14px);
   }
 
   #workspace {
@@ -3980,6 +3992,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 @media (max-width: 560px) {
   #login-view {
     padding: 0.75rem;
+    justify-content: flex-start;
   }
 
   .login-shell {
@@ -4003,6 +4016,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     border-radius: 20px;
     max-height: none;
     overflow: visible;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
 
   .login-brand strong {
@@ -4075,6 +4089,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   #login-view {
     padding: 1rem;
     align-items: start;
+    justify-content: flex-start;
   }
 
   .login-shell {
@@ -4108,6 +4123,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   #login-view {
     padding: 0.7rem;
     align-items: start;
+    justify-content: flex-start;
   }
 
   .login-shell {

@@ -2552,8 +2552,52 @@
     syncBackdrop();
     syncPeekButtons();
     window.scrollTo(0, 0);
+    ensurePanelSurfaceVisible();
     maybeOpenGuide();
     renderAppCenter();
+  }
+
+  function ensurePanelSurfaceVisible() {
+    window.setTimeout(function() {
+      var panelView = q("panel-view");
+      var workspace = q("workspace");
+      var topbar = q("topbar");
+      var conversation = q("conversation-panel");
+      var workspaceHeight;
+      var conversationHeight;
+      if (!panelView || panelView.classList.contains("hidden") || !workspace || !conversation) {
+        return;
+      }
+      workspaceHeight = Math.round(workspace.getBoundingClientRect().height || 0);
+      conversationHeight = Math.round(conversation.getBoundingClientRect().height || 0);
+      if (workspaceHeight >= 180 && conversationHeight >= 180) {
+        return;
+      }
+      state.focusMode = false;
+      state.utilityStripCollapsed = false;
+      state.chatContextCollapsed = false;
+      document.body.classList.remove(
+        "focus-mode",
+        "modal-open",
+        "drawer-open",
+        "sidebar-open",
+        "inspector-open",
+        "utility-strip-collapsed",
+        "chat-context-collapsed"
+      );
+      detectMobile();
+      closeSidebar();
+      closeInspector();
+      applyFocusMode();
+      applyChatContextState();
+      syncUtilityStripUI();
+      syncTransientLayoutState();
+      syncBackdrop();
+      syncPeekButtons();
+      if (topbar && topbar.scrollIntoView) {
+        topbar.scrollIntoView({ block: "start", behavior: "auto" });
+      }
+    }, 90);
   }
 
   function resetSession() {
@@ -2727,6 +2771,7 @@
     applyChatContextState();
     syncUtilityStripUI();
     renderAppCenter();
+    ensurePanelSurfaceVisible();
     setConnectionStatus("syncing");
     if (state.activeRoomId) {
       selectRoom(state.activeRoomId, true);
