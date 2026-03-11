@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -80,7 +81,15 @@ func (s *Store) RestoreFromSnapshot(snapshotPath string) error {
 		if !exists {
 			continue
 		}
-		if _, err := conn.ExecContext(ctx, `INSERT INTO `+table+` SELECT * FROM imported.`+table); err != nil {
+		columns, err := sharedTableColumns(ctx, conn, table)
+		if err != nil {
+			return err
+		}
+		if len(columns) == 0 {
+			continue
+		}
+		columnList := strings.Join(columns, ", ")
+		if _, err := conn.ExecContext(ctx, `INSERT INTO `+table+` (`+columnList+`) SELECT `+columnList+` FROM imported.`+table); err != nil {
 			return fmt.Errorf("restore table %s: %w", table, err)
 		}
 	}
@@ -115,4 +124,55 @@ func databaseTableExistsConn(ctx context.Context, conn *sql.Conn, schemaName, ta
 		return false, fmt.Errorf("inspect table %s.%s: %w", schemaName, table, err)
 	}
 	return count > 0, nil
+}
+
+func sharedTableColumns(ctx context.Context, conn *sql.Conn, table string) ([]string, error) {
+	current, err := tableColumns(ctx, conn, "main", table)
+	if err != nil {
+		return nil, err
+	}
+	imported, err := tableColumns(ctx, conn, "imported", table)
+	if err != nil {
+		return nil, err
+	}
+	if len(current) == 0 || len(imported) == 0 {
+		return nil, nil
+	}
+	shared := make([]string, 0, len(current))
+	for _, name := range current {
+		if slices.Contains(imported, name) {
+			shared = append(shared, name)
+		}
+	}
+	return shared, nil
+}
+
+func tableColumns(ctx context.Context, conn *sql.Conn, schemaName, table string) ([]string, error) {
+	rows, err := conn.QueryContext(ctx, `PRAGMA `+schemaName+`.table_info(`+table+`)`)
+	if err != nil {
+		return nil, fmt.Errorf("inspect columns %s.%s: %w", schemaName, table, err)
+	}
+	defer rows.Close()
+
+	columns := make([]string, 0, 16)
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			typeName   string
+			notNull    int
+			defaultV   sql.NullString
+			primaryKey int
+		)
+		if err := rows.Scan(&cid, &name, &typeName, &notNull, &defaultV, &primaryKey); err != nil {
+			return nil, fmt.Errorf("scan columns %s.%s: %w", schemaName, table, err)
+		}
+		if strings.TrimSpace(name) != "" {
+			columns = append(columns, name)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate columns %s.%s: %w", schemaName, table, err)
+	}
+	return columns, nil
 }
