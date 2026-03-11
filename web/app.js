@@ -143,6 +143,7 @@
     susPositionIndex: 0,
     utilityStripCollapsed: false,
     chatContextCollapsed: false,
+    emergencyMode: false,
     desktopSidebarCollapsed: false,
     desktopInspectorCollapsed: false
   };
@@ -219,6 +220,36 @@
       target.scrollIntoView();
     } catch (ignored) {
     }
+  }
+
+  function enterEmergencyMode(message) {
+    var loginError = q("login-error");
+    state.emergencyMode = true;
+    document.body.classList.add("emergency-mode", "login-mode");
+    document.body.classList.remove(
+      "panel-mode",
+      "modal-open",
+      "drawer-open",
+      "sidebar-open",
+      "inspector-open",
+      "utility-strip-collapsed",
+      "chat-context-collapsed",
+      "focus-mode"
+    );
+    if (q("panel-view")) {
+      q("panel-view").classList.add("hidden");
+    }
+    if (q("login-view")) {
+      q("login-view").classList.remove("hidden");
+      q("login-view").scrollTop = 0;
+    }
+    if (loginError) {
+      loginError.classList.remove("hidden");
+      loginError.textContent = message || "Modo de compatibilidade ativado. Tenta entrar de novo.";
+    }
+    try {
+      window.scrollTo(0, 0);
+    } catch (e) {}
   }
 
   function ensureFieldVisible(target) {
@@ -2533,6 +2564,8 @@
   }
 
   function showLogin(message) {
+    state.emergencyMode = false;
+    document.body.classList.remove("emergency-mode");
     setViewMode("login");
     q("login-view").classList.remove("hidden");
     q("panel-view").classList.add("hidden");
@@ -2567,6 +2600,8 @@
   }
 
   function showPanel() {
+    state.emergencyMode = false;
+    document.body.classList.remove("emergency-mode");
     setViewMode("panel");
     q("login-view").classList.add("hidden");
     q("panel-view").classList.remove("hidden");
@@ -6804,9 +6839,26 @@
     tryBootstrap();
   }
 
+  window.addEventListener("error", function() {
+    enterEmergencyMode("Bah, teu navegador entrou em modo de compatibilidade. Tenta entrar de novo.");
+  });
+  window.addEventListener("unhandledrejection", function() {
+    enterEmergencyMode("Bah, deu uma oscilada no mobile. Ativei o modo de compatibilidade.");
+  });
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", function() {
+      try {
+        init();
+      } catch (err) {
+        enterEmergencyMode("Modo de compatibilidade ativado no carregamento. Tenta entrar de novo.");
+      }
+    });
   } else {
-    init();
+    try {
+      init();
+    } catch (err) {
+      enterEmergencyMode("Modo de compatibilidade ativado no carregamento. Tenta entrar de novo.");
+    }
   }
 })();

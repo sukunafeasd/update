@@ -3753,15 +3753,36 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 }
 
 @media (max-width: 760px) {
+  #matrix-bg,
+  #noise-layer {
+    display: none !important;
+  }
+
+  body {
+    background: linear-gradient(135deg, #06100c, #0b1712);
+  }
+
   #login-view {
     padding: 1rem;
     align-items: start;
     justify-content: flex-start;
+    display: block;
   }
 
   #panel-view {
+    display: block;
     padding: 0.65rem;
     padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+
+  #panel-shell,
+  #workspace,
+  #workspace-grid {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   #topbar,
@@ -3773,12 +3794,26 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .conversation-context-shell {
     background-color: rgba(10, 18, 14, 0.98);
     backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   #workspace {
     gap: 0.65rem;
     height: auto;
     min-height: calc(var(--viewport-height) - 1.3rem);
+  }
+
+  #conversation-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(var(--viewport-height) - 8rem);
+    max-height: none;
+    overflow: visible;
+  }
+
+  #message-stream {
+    min-height: 32vh;
+    max-height: none;
   }
 
   .login-download-actions {
@@ -4005,6 +4040,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-shell {
+    display: block;
     width: 100%;
     max-height: none;
     align-content: start;
@@ -4020,12 +4056,17 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-card {
+    display: block;
     gap: 0.95rem;
     padding: 1rem;
     border-radius: 20px;
     max-height: none;
     overflow: visible;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .login-card > * + * {
+    margin-top: 0.95rem;
   }
 
   .login-brand strong {
@@ -4107,6 +4148,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-card {
+    display: block;
     gap: 1rem;
     padding: 1.2rem;
     max-height: none;
@@ -4141,6 +4183,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .login-card {
+    display: block;
     gap: 0.8rem;
     padding: 1rem;
     max-height: none;
