@@ -2441,6 +2441,7 @@
   }
 
   function handleBrowserNotifyToggle() {
+    var permissionRequest;
     if (!window.Notification) {
       toast("Teu navegador nao libera push por aqui.", "warn");
       syncBrowserNotifyButton();
@@ -2456,7 +2457,24 @@
       syncBrowserNotifyButton();
       return;
     }
-    Notification.requestPermission().then(function(permission) {
+    try {
+      permissionRequest = Notification.requestPermission(function(permission) {
+        syncBrowserNotifyButton();
+        if (permission === "granted") {
+          toast("Push do navegador ligado. Agora o painel te cutuca.", "ok");
+          return;
+        }
+        toast("Push nao foi liberado. O painel segue no visual e no som.", "warn");
+      });
+    } catch (requestErr) {
+      syncBrowserNotifyButton();
+      toast("Nao consegui pedir permissao de push agora.", "err");
+      return;
+    }
+    if (!permissionRequest || typeof permissionRequest.then !== "function") {
+      return;
+    }
+    permissionRequest.then(function(permission) {
       syncBrowserNotifyButton();
       if (permission === "granted") {
         toast("Push do navegador ligado. Agora o painel te cutuca.", "ok");
@@ -3927,8 +3945,8 @@
         "</div>";
       stream.appendChild(card);
     });
-    if (highlightNode && highlightNode.scrollIntoView) {
-      highlightNode.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (highlightNode) {
+      safeScrollIntoView(highlightNode, { block: "center", behavior: "smooth" });
     } else {
       stream.scrollTop = stream.scrollHeight;
     }
@@ -6341,7 +6359,7 @@
     }
     if (sectionId && q(sectionId) && q(sectionId).scrollIntoView) {
       window.setTimeout(function() {
-        q(sectionId).scrollIntoView({ block: "start", behavior: "smooth" });
+        safeScrollIntoView(q(sectionId), { block: "start", behavior: "smooth" });
       }, 80);
     }
   }
@@ -6739,7 +6757,7 @@
           toast("Abre uma conversa liberada antes de responder, vivente.", "warn");
         } else {
           q("composer-input").focus();
-          q("composer-input").scrollIntoView({ block: "nearest", behavior: "smooth" });
+          safeScrollIntoView(q("composer-input"), { block: "nearest", behavior: "smooth" });
         }
       } else if (action === "trigger-attach") {
         if (q("composer-form").classList.contains("hidden")) {
