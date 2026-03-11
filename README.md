@@ -96,6 +96,25 @@ $env:UNIVERSALD_OPS_TOKEN="teu-token"
 powershell -ExecutionPolicy Bypass -File .\scripts\sync-production-mirror.ps1
 ```
 
+Guardiao automatico de backup:
+
+```powershell
+$env:UNIVERSALD_OPS_TOKEN="teu-token"
+powershell -ExecutionPolicy Bypass -File .\scripts\start-backup-watch.ps1
+```
+
+Status do guardiao:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\backup-watch-status.ps1
+```
+
+Parar guardiao:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\stop-backup-watch.ps1
+```
+
 Smoke da URL fixa:
 
 ```powershell
