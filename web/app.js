@@ -2215,6 +2215,7 @@
     state.compactLayout = state.isMobile || layoutWidth <= 1080;
     document.body.classList.toggle("mobile", state.isMobile);
     document.body.classList.toggle("compact", state.compactLayout);
+    document.body.classList.toggle("mobile-clean", state.isMobile);
     if (state.compactLayout) {
       if (!wasCompact) {
         document.body.classList.remove("sidebar-open");
@@ -2222,6 +2223,10 @@
         state.utilityStripCollapsed = loadUtilityStripCollapsed();
       }
       if (state.isMobile && !wasMobile) {
+        state.utilityStripCollapsed = true;
+        state.chatContextCollapsed = true;
+      }
+      if (state.isMobile && document.body.classList.contains("composer-focus")) {
         state.utilityStripCollapsed = true;
         state.chatContextCollapsed = true;
       }
@@ -2306,6 +2311,12 @@
       return;
     }
     if (active) {
+      if (state.isMobile) {
+        state.utilityStripCollapsed = true;
+        state.chatContextCollapsed = true;
+        syncUtilityStripUI();
+        applyChatContextState();
+      }
       closeSidebar();
       closeInspector();
       document.body.classList.add("composer-focus");
