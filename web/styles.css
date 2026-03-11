@@ -5343,3 +5343,130 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     right: 0.35rem;
   }
 }
+
+@media (max-width: 760px) {
+  body.mobile-clean .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  body.mobile-clean .profile-preview-card {
+    padding: 0.72rem;
+    border-radius: 16px;
+  }
+
+  body.mobile-clean .profile-preview-banner,
+  body.mobile-clean .member-banner {
+    height: 58px;
+    border-radius: 14px;
+  }
+
+  body.mobile-clean .social-profile-top {
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem;
+    align-items: center;
+  }
+
+  body.mobile-clean .social-profile-grid {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  body.mobile-clean .member-stat-strip,
+  body.mobile-clean .social-actions,
+  body.mobile-clean .theme-preset-strip,
+  body.mobile-clean .banner-preset-strip {
+    gap: 0.38rem;
+  }
+
+  body.mobile-clean .theme-preset-strip .theme-preset,
+  body.mobile-clean .banner-preset-strip .banner-preset {
+    min-height: 38px;
+    padding: 0.44rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  body.mobile-clean .inline-row {
+    gap: 0.45rem;
+  }
+
+  body.mobile-clean .inline-row > .btn,
+  body.mobile-clean .inline-row > input,
+  body.mobile-clean .inline-row > select,
+  body.mobile-clean .inline-row > a {
+    min-width: 0;
+  }
+
+  body.mobile-clean .social-profile-shell {
+    gap: 0.72rem;
+  }
+
+  body.mobile-clean .social-profile-avatar {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+  }
+
+  body.mobile-clean .media-modal-card {
+    padding: 0.74rem;
+  }
+
+  body.mobile-clean .media-modal-layout {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  body.mobile-clean .media-modal-stage {
+    min-height: 34vh;
+    max-height: 46vh;
+    border-radius: 16px;
+  }
+
+  body.mobile-clean .media-modal-stage img,
+  body.mobile-clean .media-modal-stage video,
+  body.mobile-clean .media-modal-stage iframe {
+    max-height: 44vh;
+    border-radius: 14px;
+  }
+
+  body.mobile-clean .media-modal-side {
+    gap: 0.45rem;
+  }
+
+  body.mobile-clean .media-modal-meta {
+    max-height: 18vh;
+    overflow: auto;
+    padding-right: 0.08rem;
+  }
+
+  body.mobile-clean .media-modal-actions {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(10, 18, 14, 0), rgba(10, 18, 14, 0.96) 26%);
+    padding-top: 0.25rem;
+  }
+}
+
+@media (max-width: 460px) {
+  body.mobile-clean .social-profile-top {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  body.mobile-clean .inline-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.mobile-clean .inline-row > .btn,
+  body.mobile-clean .inline-row > input,
+  body.mobile-clean .inline-row > select,
+  body.mobile-clean .inline-row > a {
+    width: 100%;
+  }
+
+  body.mobile-clean .media-modal-stage {
+    min-height: 30vh;
+    max-height: 42vh;
+  }
+}

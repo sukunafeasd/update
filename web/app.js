@@ -3842,6 +3842,12 @@
   }
 
   function openMediaPreview(roomId, messageId) {
+    if (state.isMobile) {
+      closeSidebar();
+      closeInspector();
+      state.utilityStripCollapsed = true;
+      syncUtilityStripUI();
+    }
     state.mediaPreview = { roomId: Number(roomId), messageId: Number(messageId) };
     renderMediaPreview();
   }
@@ -5256,6 +5262,12 @@
     if (!state.viewer) {
       return;
     }
+    if (state.isMobile) {
+      closeSidebar();
+      closeInspector();
+      state.utilityStripCollapsed = true;
+      syncUtilityStripUI();
+    }
     q("profile-display").value = state.viewer.displayName || "";
     q("profile-status").value = state.viewer.status || "online";
     q("profile-theme").value = state.viewer.theme || "matrix";
@@ -5269,6 +5281,7 @@
     syncBannerPresetState();
     renderProfileFormPreview();
     q("profile-modal").classList.remove("hidden");
+    q("profile-modal").scrollTop = 0;
     syncTransientLayoutState();
   }
 
@@ -5685,14 +5698,28 @@
     try {
       var data = await apiFetch("/api/panel/social/profile?userId=" + encodeURIComponent(userId));
       state.selectedMember = data.profile;
+      if (state.isMobile) {
+        closeSidebar();
+        closeInspector();
+        state.utilityStripCollapsed = true;
+        syncUtilityStripUI();
+      }
       renderMemberProfile();
       q("member-modal").classList.remove("hidden");
+      q("member-modal").scrollTop = 0;
       syncTransientLayoutState();
     } catch (err) {
       state.selectedMember = fallbackSocialProfile(userId);
       if (state.selectedMember) {
+        if (state.isMobile) {
+          closeSidebar();
+          closeInspector();
+          state.utilityStripCollapsed = true;
+          syncUtilityStripUI();
+        }
         renderMemberProfile();
         q("member-modal").classList.remove("hidden");
+        q("member-modal").scrollTop = 0;
         syncTransientLayoutState();
         toast("Perfil abriu em modo local porque a API social oscilou.", "warn");
         return;
