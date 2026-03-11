@@ -2000,11 +2000,15 @@
   function syncMobileActionButtons() {
     var profileUtility = q("btn-profile-utility");
     var logoutUtility = q("btn-logout-utility");
+    var inspectorToggle = q("btn-inspector-toggle");
     if (!profileUtility || !logoutUtility) {
       return;
     }
     profileUtility.classList.toggle("hidden", !state.compactLayout);
     logoutUtility.classList.toggle("hidden", !state.compactLayout);
+    if (inspectorToggle) {
+      inspectorToggle.classList.toggle("hidden", !!state.isMobile);
+    }
   }
 
   function directPeerAvatarMarkup(room) {
@@ -2323,6 +2327,10 @@
       return;
     }
     document.body.classList.remove("composer-focus");
+    if (state.isMobile) {
+      syncUtilityStripUI();
+      applyChatContextState();
+    }
   }
 
   function syncTransientLayoutState() {

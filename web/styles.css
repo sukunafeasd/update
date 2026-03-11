@@ -4680,6 +4680,12 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     display: none;
   }
 
+  body.mobile-clean #btn-utility-toggle {
+    min-height: 38px;
+    padding: 0.46rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
   body.mobile-clean .room-icon {
     width: 40px;
     height: 40px;
@@ -4710,6 +4716,14 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     display: none !important;
   }
 
+  body.mobile-clean #btn-open-app,
+  body.mobile-clean #btn-room-favorite,
+  body.mobile-clean #btn-inspector-toggle,
+  body.mobile-clean #btn-guide,
+  body.mobile-clean #btn-browser-notify {
+    display: none !important;
+  }
+
   body.mobile-clean .topbar-utility-strip {
     gap: 0.4rem;
     padding-top: 0.42rem;
@@ -4720,6 +4734,10 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     min-height: 38px;
     padding: 0.48rem 0.74rem;
     font-size: 0.8rem;
+  }
+
+  body.mobile-clean #conversation-panel {
+    border-radius: 18px;
   }
 
   body.mobile-clean #conversation-panel {
@@ -4769,6 +4787,12 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     border-radius: 16px;
   }
 
+  body.mobile-clean .message-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
   body.mobile-clean .message-head {
     gap: 0.42rem;
   }
@@ -4776,6 +4800,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   body.mobile-clean .message-body {
     font-size: 0.92rem;
     line-height: 1.45;
+  }
+
+  body.mobile-clean .message-reactions,
+  body.mobile-clean .quick-reactions {
+    gap: 0.35rem;
   }
 
   body.mobile-clean #composer-form {
@@ -4790,6 +4819,11 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   body.mobile-clean .composer-meta-row {
     gap: 0.38rem;
+  }
+
+  body.mobile-clean .composer-hint,
+  body.mobile-clean #composer-draft-hint {
+    font-size: 0.72rem;
   }
 
   body.mobile-clean .composer-shell textarea {
@@ -4861,6 +4895,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.72rem;
   }
 
+  body.mobile-clean .search-card-head,
+  body.mobile-clean .media-card-head,
+  body.mobile-clean .section-head,
+  body.mobile-clean .inspector-head {
+    gap: 0.45rem;
+  }
+
   body.mobile-clean .modal-shell {
     padding: 0.55rem;
   }
@@ -4868,6 +4909,15 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   body.mobile-clean .modal-card {
     max-height: calc(var(--viewport-height) - 1.1rem);
     border-radius: 18px;
+  }
+
+  body.mobile-clean .media-modal-layout {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+
+  body.mobile-clean .media-modal-side {
+    padding-top: 0;
   }
 }
 
@@ -4881,8 +4931,20 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.6rem 0.66rem;
   }
 
+  body.mobile-clean .room-header-top {
+    gap: 0.45rem;
+  }
+
   body.mobile-clean #conversation-panel {
     padding: 0.56rem;
+  }
+
+  body.mobile-clean .conversation-context-shell {
+    padding: 0.4rem 0.45rem;
+  }
+
+  body.mobile-clean .conversation-context-copy strong {
+    font-size: 0.82rem;
   }
 
   body.mobile-clean .composer-shell textarea {
