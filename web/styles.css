@@ -3803,6 +3803,14 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     min-height: calc(var(--viewport-height) - 1.3rem);
   }
 
+  #viewer-card,
+  #dashboard-pulse,
+  #dashboard-quickline,
+  #direct-hub-deck,
+  #room-spotlight {
+    display: none !important;
+  }
+
   #conversation-panel {
     display: flex;
     flex-direction: column;
@@ -3847,6 +3855,9 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
 
   #topbar {
     gap: 0.6rem;
+    position: sticky;
+    top: 0;
+    z-index: 6;
   }
 
   .room-item {
@@ -3865,9 +3876,19 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     padding: 0.8rem;
   }
 
+  .topbar-main {
+    gap: 0.55rem;
+    border-radius: 20px;
+  }
+
+  .topbar-actions {
+    display: none;
+  }
+
   .conversation-context-shell {
-    padding: 0.72rem 0.76rem;
-    gap: 0.6rem;
+    padding: 0.6rem 0.68rem;
+    gap: 0.45rem;
+    border-radius: 18px;
   }
 
   .conversation-context-bar {
@@ -3875,7 +3896,7 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .conversation-context {
-    max-height: min(28vh, 240px);
+    max-height: min(22vh, 180px);
   }
 
   .topbar-actions .btn,
@@ -3924,6 +3945,8 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 0.15rem;
+    margin-inline: -0.1rem;
+    padding-inline: 0.1rem;
   }
 
   .sidebar-scroll {
@@ -4005,6 +4028,21 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   .topbar-actions .btn {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .topbar-utility-strip {
+    gap: 0.42rem;
+    padding-top: 0.2rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-inline: -0.1rem;
+    padding-inline: 0.1rem;
+  }
+
+  .topbar-utility-strip .btn {
     flex: 0 0 auto;
     min-width: max-content;
   }
@@ -4097,13 +4135,13 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   }
 
   #conversation-panel {
-    padding: 0.78rem;
+    padding: 0.72rem;
   }
 
   .topbar-utility-strip {
     margin-inline: -0.1rem;
     padding-inline: 0.1rem;
-    padding-top: 0.5rem;
+    padding-top: 0.35rem;
   }
 
   .room-header-top {
@@ -4118,6 +4156,27 @@ body.inspector-collapsed:not(.compact):not(.mobile) #btn-inspector-peek {
   .dashboard-quickline {
     margin-inline: -0.1rem;
     padding-inline: 0.1rem;
+  }
+
+  .room-header-top {
+    gap: 0.55rem;
+  }
+
+  .room-copy span,
+  #room-description {
+    display: none;
+  }
+
+  #topbar h2 {
+    font-size: 1rem;
+  }
+
+  .conversation-context-shell {
+    padding: 0.52rem 0.56rem;
+  }
+
+  .conversation-context-copy strong {
+    font-size: 0.9rem;
   }
 
   .room-item-top {

@@ -1921,6 +1921,16 @@
     button.classList.toggle("active", !!window.Notification && Notification.permission === "granted");
   }
 
+  function syncMobileActionButtons() {
+    var profileUtility = q("btn-profile-utility");
+    var logoutUtility = q("btn-logout-utility");
+    if (!profileUtility || !logoutUtility) {
+      return;
+    }
+    profileUtility.classList.toggle("hidden", !state.compactLayout);
+    logoutUtility.classList.toggle("hidden", !state.compactLayout);
+  }
+
   function directPeerAvatarMarkup(room) {
     var peer = directPeerProfile(room);
     var name = displayRoomName(room);
@@ -2123,6 +2133,7 @@
     var agent = String((window.navigator && window.navigator.userAgent) || "").toLowerCase();
     var viewport = window.visualViewport || null;
     var layoutWidth = viewport && viewport.width ? viewport.width : window.innerWidth;
+    var wasMobile = !!state.isMobile;
     var wasCompact = !!state.compactLayout;
     state.isMobile = layoutWidth <= 820 || /android|iphone|ipad|mobile|opera mini|windows phone/.test(agent);
     state.compactLayout = state.isMobile || layoutWidth <= 1080;
@@ -2133,6 +2144,10 @@
         document.body.classList.remove("sidebar-open");
         document.body.classList.remove("inspector-open");
         state.utilityStripCollapsed = loadUtilityStripCollapsed();
+      }
+      if (state.isMobile && !wasMobile) {
+        state.utilityStripCollapsed = true;
+        state.chatContextCollapsed = true;
       }
       document.body.classList.toggle("sidebar-collapsed", !document.body.classList.contains("sidebar-open"));
       document.body.classList.toggle("inspector-collapsed", !document.body.classList.contains("inspector-open"));
@@ -2150,6 +2165,7 @@
     applyFocusMode();
     applyChatContextState();
     syncUtilityStripUI();
+    syncMobileActionButtons();
     syncBackdrop();
     syncPeekButtons();
   }
@@ -2608,8 +2624,14 @@
     q("panel-view").scrollTop = 0;
     document.body.classList.remove("modal-open", "drawer-open", "sidebar-open", "inspector-open");
     detectMobile();
+    if (state.isMobile) {
+      state.utilityStripCollapsed = true;
+      state.chatContextCollapsed = true;
+    }
     closeSidebar();
     closeInspector();
+    applyChatContextState();
+    syncUtilityStripUI();
     syncTransientLayoutState();
     syncBackdrop();
     syncPeekButtons();
@@ -6468,6 +6490,8 @@
     q("btn-login-complete-access").addEventListener("click", openJoinCompleteModal);
     q("btn-logout").addEventListener("click", handleLogout);
     q("btn-profile").addEventListener("click", openProfileModal);
+    q("btn-logout-utility").addEventListener("click", handleLogout);
+    q("btn-profile-utility").addEventListener("click", openProfileModal);
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
     q("btn-focus-mode").addEventListener("click", toggleFocusMode);
