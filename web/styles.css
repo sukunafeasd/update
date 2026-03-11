@@ -105,6 +105,8 @@ body {
   min-height: var(--viewport-height);
   overflow: hidden;
   color-scheme: dark;
+  position: relative;
+  isolation: isolate;
 }
 
 body.login-mode {
@@ -136,6 +138,7 @@ select {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  z-index: -2;
 }
 
 #matrix-bg {
@@ -144,6 +147,7 @@ select {
 
 #noise-layer {
   opacity: 0.08;
+  z-index: -1;
   background-image:
     linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
@@ -153,9 +157,14 @@ select {
 
 .view {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   min-height: 100vh;
   min-height: var(--viewport-height);
+}
+
+#login-view,
+#panel-view {
+  z-index: 3;
 }
 
 .hidden {
