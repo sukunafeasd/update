@@ -9,6 +9,7 @@ type PanelUser struct {
 	DisplayName  string     `json:"displayName"`
 	Role         string     `json:"role"`
 	Theme        string     `json:"theme"`
+	BannerPreset string     `json:"bannerPreset"`
 	AccentColor  string     `json:"accentColor"`
 	AvatarURL    string     `json:"avatarUrl"`
 	Bio          string     `json:"bio"`
@@ -97,6 +98,7 @@ type PanelPresence struct {
 	DisplayName      string    `json:"displayName"`
 	Role             string    `json:"role"`
 	Theme            string    `json:"theme"`
+	BannerPreset     string    `json:"bannerPreset"`
 	AccentColor      string    `json:"accentColor"`
 	AvatarURL        string    `json:"avatarUrl"`
 	Bio              string    `json:"bio"`

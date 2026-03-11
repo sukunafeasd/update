@@ -791,6 +791,7 @@ func (s *Service) CreateUser(actor model.PanelUser, username, email, password, d
 		DisplayName:  strings.TrimSpace(displayName),
 		Role:         role,
 		Theme:        "matrix",
+		BannerPreset: defaultBannerByRole(role),
 		AccentColor:  defaultAccentByRole(role),
 		Status:       "online",
 		PasswordHash: hash,
@@ -926,7 +927,7 @@ func (s *Service) GetSocialProfile(viewer model.PanelUser, targetUserID int64) (
 	}, nil
 }
 
-func (s *Service) UpdateProfile(user model.PanelUser, displayName, bio, theme, accentColor, avatarURL, status, statusText string) (model.PanelUser, error) {
+func (s *Service) UpdateProfile(user model.PanelUser, displayName, bio, theme, bannerPreset, accentColor, avatarURL, status, statusText string) (model.PanelUser, error) {
 	cleanAvatarURL, err := sanitizeAvatarURL(avatarURL)
 	if err != nil {
 		return model.PanelUser{}, err
@@ -936,6 +937,11 @@ func (s *Service) UpdateProfile(user model.PanelUser, displayName, bio, theme, a
 		DisplayName: sanitizeDisplayName(displayName, user.DisplayName, user.Username),
 		Bio:         sanitizeBio(bio),
 		Theme:       sanitizeTheme(theme),
+		BannerPreset: sanitizeBannerPreset(
+			bannerPreset,
+			user.BannerPreset,
+			defaultBannerByRole(user.Role),
+		),
 		AccentColor: sanitizeAccent(accentColor),
 		AvatarURL:   cleanAvatarURL,
 		Status:      sanitizePresence(status),
@@ -2244,6 +2250,7 @@ func (s *Service) ensureOwner() (model.PanelUser, error) {
 		DisplayName:  "Dono do Painel",
 		Role:         "owner",
 		Theme:        "matrix",
+		BannerPreset: defaultBannerByRole("owner"),
 		AccentColor:  "#7bff00",
 		Bio:          "Owner do Painel Dief.",
 		Status:       "online",
@@ -2266,6 +2273,7 @@ func (s *Service) ensureAIUser(ownerID int64) (model.PanelUser, error) {
 		DisplayName:  "Nego Dramias",
 		Role:         "ai",
 		Theme:        "matrix",
+		BannerPreset: defaultBannerByRole("ai"),
 		AccentColor:  "#00f7ff",
 		Bio:          "Assistente local do Painel Dief.",
 		Status:       "away",
@@ -2419,6 +2427,21 @@ func sanitizeTheme(raw string) string {
 	}
 }
 
+func sanitizeBannerPreset(raw string, fallbacks ...string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "grid", "pulse", "arcade", "horizon", "stealth":
+		return strings.ToLower(strings.TrimSpace(raw))
+	}
+	for _, fallback := range fallbacks {
+		clean := strings.ToLower(strings.TrimSpace(fallback))
+		switch clean {
+		case "grid", "pulse", "arcade", "horizon", "stealth":
+			return clean
+		}
+	}
+	return "grid"
+}
+
 func sanitizePresence(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "online", "busy", "away", "offline":
@@ -2434,6 +2457,21 @@ func sanitizeAccent(raw string) string {
 		return "#7bff00"
 	}
 	return raw
+}
+
+func defaultBannerByRole(role string) string {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "owner":
+		return "pulse"
+	case "admin":
+		return "arcade"
+	case "vip":
+		return "horizon"
+	case "ai":
+		return "stealth"
+	default:
+		return "grid"
+	}
 }
 
 func sanitizeDisplayName(raw string, fallbacks ...string) string {

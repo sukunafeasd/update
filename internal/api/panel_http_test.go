@@ -100,15 +100,19 @@ func TestPanelHTTPLifecycle(t *testing.T) {
 	}
 
 	updatedProfile := mustRequestJSON(t, client, http.MethodPost, ts.URL+"/api/panel/profile", map[string]any{
-		"displayName": "Dief Teste",
-		"bio":         "Teste HTTP do Painel Dief",
-		"theme":       "matrix",
-		"accentColor": "#33ff88",
-		"status":      "online",
-		"statusText":  "lapidando o painel",
+		"displayName":  "Dief Teste",
+		"bio":          "Teste HTTP do Painel Dief",
+		"theme":        "matrix",
+		"bannerPreset": "pulse",
+		"accentColor":  "#33ff88",
+		"status":       "online",
+		"statusText":   "lapidando o painel",
 	}, nil, http.StatusOK)
 	if asMap(t, updatedProfile["viewer"])["statusText"] != "lapidando o painel" {
 		t.Fatalf("statusText not updated")
+	}
+	if asMap(t, updatedProfile["viewer"])["bannerPreset"] != "pulse" {
+		t.Fatalf("bannerPreset not updated")
 	}
 
 	upload := mustUploadFile(t, client, ts.URL+"/api/panel/upload", "files", "audit-http.png", "image/png", []byte{

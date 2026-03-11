@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=1.4.4-mobilefix4" />
+  <link rel="stylesheet" href="/styles.css?v=1.4.4-profile1" />
 </head>
 <body data-theme="matrix" class="login-mode">
   <canvas id="matrix-bg" aria-hidden="true"></canvas>
@@ -551,6 +551,16 @@
             </select>
           </div>
           <div>
+            <label for="profile-banner-preset">Banner</label>
+            <select id="profile-banner-preset">
+              <option value="grid">grid</option>
+              <option value="pulse">pulse</option>
+              <option value="arcade">arcade</option>
+              <option value="horizon">horizon</option>
+              <option value="stealth">stealth</option>
+            </select>
+          </div>
+          <div>
             <label for="profile-accent">Cor de destaque</label>
             <input id="profile-accent" type="color" value="#7bff00" />
           </div>
@@ -576,6 +586,17 @@
             <button class="theme-preset" type="button" data-theme-preset="ember" data-theme-accent="#ff7a42">Ember</button>
             <button class="theme-preset" type="button" data-theme-preset="cobalt" data-theme-accent="#54b8ff">Cobalt</button>
             <button class="theme-preset" type="button" data-theme-preset="neon" data-theme-accent="#ff5ad4">Neon</button>
+          </div>
+        </div>
+
+        <div>
+          <label>Capas do perfil</label>
+          <div class="banner-preset-strip">
+            <button class="banner-preset" type="button" data-banner-preset="grid">Grid</button>
+            <button class="banner-preset" type="button" data-banner-preset="pulse">Pulse</button>
+            <button class="banner-preset" type="button" data-banner-preset="arcade">Arcade</button>
+            <button class="banner-preset" type="button" data-banner-preset="horizon">Horizon</button>
+            <button class="banner-preset" type="button" data-banner-preset="stealth">Stealth</button>
           </div>
         </div>
 
@@ -851,6 +872,6 @@
   <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/mp4,.pdf,.zip,.rar,.7z,.txt,.md,.json,.csv,.log,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.js,.ts,.tsx,.jsx,.go,.py,.sql,.yaml,.yml,.toml,.ini" multiple hidden />
   <input id="avatar-upload-input" type="file" accept="image/*" hidden />
 
-  <script src="/app.js?v=1.4.4-mobilefix4"></script>
+  <script src="/app.js?v=1.4.4-profile1"></script>
 </body>
 </html>

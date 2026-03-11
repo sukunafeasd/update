@@ -78,6 +78,13 @@
     cobalt: { label: "Cobalt", accent: "#54b8ff" },
     neon: { label: "Neon", accent: "#ff5ad4" }
   };
+  var BANNER_PRESETS = {
+    grid: { label: "Grid" },
+    pulse: { label: "Pulse" },
+    arcade: { label: "Arcade" },
+    horizon: { label: "Horizon" },
+    stealth: { label: "Stealth" }
+  };
 
   var state = {
     viewer: null,
@@ -498,6 +505,14 @@
     return themeMeta(theme).accent;
   }
 
+  function bannerMeta(bannerPreset) {
+    return BANNER_PRESETS[String(bannerPreset || "grid").toLowerCase()] || BANNER_PRESETS.grid;
+  }
+
+  function bannerLabel(bannerPreset) {
+    return bannerMeta(bannerPreset).label;
+  }
+
   function normalizeAccentColor(value, fallback) {
     var clean = String(value || "").trim();
     if (/^#[0-9a-f]{3}$/i.test(clean)) {
@@ -509,12 +524,32 @@
     return String(fallback || "#7bff00");
   }
 
-  function panelBannerStyle(theme, accent) {
+  function panelBannerStyle(theme, accent, bannerPreset) {
     var base = normalizeAccentColor(themeAccent(theme), "#7bff00");
     var tone = normalizeAccentColor(accent, base);
-    return "radial-gradient(circle at 14% 18%, " + tone + "66 0%, transparent 34%), " +
-      "radial-gradient(circle at 84% 12%, " + base + "55 0%, transparent 28%), " +
-      "linear-gradient(135deg, rgba(6,10,18,0.98) 0%, rgba(10,18,28,0.94) 48%, rgba(8,12,20,0.98) 100%)";
+    switch (String(bannerPreset || "grid").toLowerCase()) {
+      case "pulse":
+        return "radial-gradient(circle at 18% 24%, " + tone + "88 0%, transparent 24%), " +
+          "radial-gradient(circle at 78% 22%, " + base + "44 0%, transparent 26%), " +
+          "radial-gradient(circle at 50% 110%, " + tone + "55 0%, transparent 42%), " +
+          "linear-gradient(135deg, rgba(6,10,18,0.98) 0%, rgba(7,22,20,0.94) 48%, rgba(8,12,20,0.98) 100%)";
+      case "arcade":
+        return "linear-gradient(120deg, rgba(255,255,255,0.04) 0 9%, transparent 9% 18%, rgba(255,255,255,0.03) 18% 26%, transparent 26% 36%, rgba(255,255,255,0.02) 36% 100%), " +
+          "linear-gradient(135deg, " + tone + "22 0%, transparent 40%), " +
+          "linear-gradient(90deg, rgba(7,13,20,0.98), rgba(11,18,29,0.95) 45%, rgba(8,12,20,0.98))";
+      case "horizon":
+        return "radial-gradient(circle at 50% 130%, " + tone + "55 0%, transparent 34%), " +
+          "linear-gradient(180deg, " + base + "22 0%, transparent 24%), " +
+          "linear-gradient(135deg, rgba(5,10,18,0.98) 0%, rgba(9,17,30,0.94) 52%, rgba(8,14,22,0.98) 100%)";
+      case "stealth":
+        return "linear-gradient(90deg, rgba(255,255,255,0.05) 0 2%, transparent 2% 14%, rgba(255,255,255,0.02) 14% 16%, transparent 16% 100%), " +
+          "radial-gradient(circle at 85% 14%, " + tone + "33 0%, transparent 22%), " +
+          "linear-gradient(135deg, rgba(4,8,12,0.99), rgba(8,12,18,0.96) 55%, rgba(6,8,12,0.99))";
+      default:
+        return "radial-gradient(circle at 14% 18%, " + tone + "66 0%, transparent 34%), " +
+          "radial-gradient(circle at 84% 12%, " + base + "55 0%, transparent 28%), " +
+          "linear-gradient(135deg, rgba(6,10,18,0.98) 0%, rgba(10,18,28,0.94) 48%, rgba(8,12,20,0.98) 100%)";
+    }
   }
 
   function normalizeText(value) {
@@ -1816,6 +1851,13 @@
     var activeTheme = String(q("profile-theme") && q("profile-theme").value || state.viewer && state.viewer.theme || "matrix");
     Array.prototype.slice.call(document.querySelectorAll("[data-theme-preset]")).forEach(function(button) {
       button.classList.toggle("active", button.getAttribute("data-theme-preset") === activeTheme);
+    });
+  }
+
+  function syncBannerPresetState() {
+    var activeBanner = String(q("profile-banner-preset") && q("profile-banner-preset").value || state.viewer && state.viewer.bannerPreset || "grid");
+    Array.prototype.slice.call(document.querySelectorAll("[data-banner-preset]")).forEach(function(button) {
+      button.classList.toggle("active", button.getAttribute("data-banner-preset") === activeBanner);
     });
   }
 
@@ -5056,6 +5098,11 @@
     syncThemePresetState();
   }
 
+  function applyBannerPreset(bannerPreset) {
+    q("profile-banner-preset").value = bannerPreset || "grid";
+    syncBannerPresetState();
+  }
+
   function openProfileModal() {
     if (!state.viewer) {
       return;
@@ -5063,11 +5110,13 @@
     q("profile-display").value = state.viewer.displayName || "";
     q("profile-status").value = state.viewer.status || "online";
     q("profile-theme").value = state.viewer.theme || "matrix";
+    q("profile-banner-preset").value = state.viewer.bannerPreset || "grid";
     q("profile-accent").value = state.viewer.accentColor || "#7bff00";
     q("profile-avatar").value = state.viewer.avatarUrl || "";
     q("profile-bio").value = state.viewer.bio || "";
     q("profile-status-text").value = state.viewer.statusText || "";
     syncThemePresetState();
+    syncBannerPresetState();
     renderProfileFormPreview();
     q("profile-modal").classList.remove("hidden");
     syncTransientLayoutState();
@@ -5083,12 +5132,13 @@
     var statusText = q("profile-status-text").value.trim();
     var bio = q("profile-bio").value.trim();
     var theme = q("profile-theme").value || "matrix";
+    var bannerPreset = q("profile-banner-preset").value || (state.viewer && state.viewer.bannerPreset) || "grid";
     var accent = q("profile-accent").value || (state.viewer && state.viewer.accentColor) || themeAccent(theme);
     if (!avatarWrap) {
       return;
     }
     if (banner) {
-      banner.style.background = panelBannerStyle(theme, accent);
+      banner.style.background = panelBannerStyle(theme, accent, bannerPreset);
     }
     if (avatarUrl) {
       avatarWrap.innerHTML = "<img class='message-avatar profile-avatar-lg' alt='" + esc(displayName) + "' src='" + esc(avatarUrl) + "' />";
@@ -5096,7 +5146,7 @@
       avatarWrap.textContent = initials(displayName);
     }
     q("profile-preview-name").textContent = displayName;
-    q("profile-preview-meta").textContent = status + " // " + themeLabel(theme);
+    q("profile-preview-meta").textContent = status + " // " + themeLabel(theme) + " // " + bannerLabel(bannerPreset);
     q("profile-preview-status").textContent = statusText || "Sem status customizado.";
     q("profile-preview-status").classList.toggle("hidden", !statusText);
     q("profile-preview-bio").textContent = bio || "Tua bio aparece aqui antes de salvar.";
@@ -5106,7 +5156,8 @@
         "<article class='insight-card'><span>teu mapa</span><strong>" + stats.messageCount + "</strong><p>mensagens tuas visiveis agora</p></article>" +
         "<article class='insight-card'><span>midia</span><strong>" + stats.attachmentCount + "</strong><p>anexos teus no recorte local</p></article>" +
         "<article class='insight-card'><span>salas</span><strong>" + stats.roomCount + "</strong><p>salas onde tua marca apareceu</p></article>" +
-        "<article class='insight-card'><span>tom</span><strong>" + esc(themeLabel(theme)) + "</strong><p>" + esc(statusText || "sem status customizado") + "</p></article>";
+        "<article class='insight-card'><span>tom</span><strong>" + esc(themeLabel(theme)) + "</strong><p>" + esc(statusText || "sem status customizado") + "</p></article>" +
+        "<article class='insight-card'><span>capa</span><strong>" + esc(bannerLabel(bannerPreset)) + "</strong><p>banner do teu cartao publico</p></article>";
     }
   }
 
@@ -5169,7 +5220,7 @@
         ? "Tu bloqueou esse usuario."
         : (profile.user.mutedByViewer ? "Tu silenciou esse usuario." : "Sem bloqueio ou silencio ativo."));
     if (banner) {
-      banner.style.background = panelBannerStyle(profile.user.theme || "matrix", profile.user.accentColor || themeAccent(profile.user.theme || "matrix"));
+      banner.style.background = panelBannerStyle(profile.user.theme || "matrix", profile.user.accentColor || themeAccent(profile.user.theme || "matrix"), profile.user.bannerPreset || "grid");
     }
     var memberAvatarUrl = safeAvatarUrl(profile.user.avatarUrl);
     if (memberAvatarUrl) {
@@ -5630,6 +5681,7 @@
       displayName: q("profile-display").value.trim(),
       bio: q("profile-bio").value.trim(),
       theme: q("profile-theme").value,
+      bannerPreset: q("profile-banner-preset").value,
       accentColor: q("profile-accent").value,
       avatarUrl: q("profile-avatar").value.trim(),
       status: q("profile-status").value,
@@ -6599,9 +6651,19 @@
       syncThemePresetState();
       renderProfileFormPreview();
     });
+    q("profile-banner-preset").addEventListener("change", function() {
+      syncBannerPresetState();
+      renderProfileFormPreview();
+    });
     Array.prototype.slice.call(document.querySelectorAll("[data-theme-preset]")).forEach(function(button) {
       button.addEventListener("click", function() {
         applyThemePreset(button.getAttribute("data-theme-preset"), button.getAttribute("data-theme-accent"));
+        renderProfileFormPreview();
+      });
+    });
+    Array.prototype.slice.call(document.querySelectorAll("[data-banner-preset]")).forEach(function(button) {
+      button.addEventListener("click", function() {
+        applyBannerPreset(button.getAttribute("data-banner-preset"));
         renderProfileFormPreview();
       });
     });
@@ -6612,7 +6674,7 @@
         renderProfileFormPreview();
       });
     });
-    ["profile-display", "profile-status", "profile-accent", "profile-avatar", "profile-bio", "profile-status-text"].forEach(function(id) {
+    ["profile-display", "profile-status", "profile-accent", "profile-avatar", "profile-bio", "profile-status-text", "profile-banner-preset"].forEach(function(id) {
       q(id).addEventListener("input", renderProfileFormPreview);
       q(id).addEventListener("change", renderProfileFormPreview);
     });
