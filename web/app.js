@@ -261,6 +261,120 @@
     } catch (e) {}
   }
 
+  function clearPanelEmergencyLayout() {
+    var panelView = q("panel-view");
+    var panelShell = q("panel-shell");
+    var workspace = q("workspace");
+    var workspaceGrid = q("workspace-grid");
+    var channelPanel = q("channel-panel");
+    var conversation = q("conversation-panel");
+    var inspector = q("inspector-panel");
+    document.body.classList.remove("panel-emergency");
+    [panelView, panelShell, workspace, workspaceGrid, channelPanel, conversation, inspector].forEach(function(node) {
+      if (!node || !node.style) {
+        return;
+      }
+      node.style.display = "";
+      node.style.height = "";
+      node.style.minHeight = "";
+      node.style.maxHeight = "";
+      node.style.overflow = "";
+      node.style.gridTemplateColumns = "";
+      node.style.gridTemplateRows = "";
+      node.style.padding = "";
+      node.style.visibility = "";
+      node.style.opacity = "";
+      node.style.pointerEvents = "";
+      node.style.transform = "";
+      node.style.position = "";
+      node.style.inset = "";
+      node.style.width = "";
+    });
+  }
+
+  function activatePanelEmergencyLayout() {
+    var panelView = q("panel-view");
+    var panelShell = q("panel-shell");
+    var workspace = q("workspace");
+    var workspaceGrid = q("workspace-grid");
+    var conversation = q("conversation-panel");
+    var channelPanel = q("channel-panel");
+    var inspector = q("inspector-panel");
+    var topbar = q("topbar");
+    state.emergencyMode = true;
+    document.body.classList.add("panel-emergency", "panel-mode");
+    document.body.classList.remove(
+      "login-mode",
+      "focus-mode",
+      "modal-open",
+      "drawer-open",
+      "sidebar-open",
+      "inspector-open",
+      "sidebar-collapsed",
+      "inspector-collapsed",
+      "utility-strip-collapsed",
+      "chat-context-collapsed"
+    );
+    if (q("login-view")) {
+      q("login-view").classList.add("hidden");
+    }
+    if (panelView) {
+      panelView.classList.remove("hidden");
+      panelView.style.display = "block";
+      panelView.style.overflow = "auto";
+      panelView.style.padding = "1rem";
+      panelView.scrollTop = 0;
+    }
+    if (panelShell) {
+      panelShell.style.display = "grid";
+      panelShell.style.gridTemplateColumns = "minmax(0, 1fr)";
+      panelShell.style.height = "auto";
+      panelShell.style.minHeight = "calc(var(--viewport-height) - 2rem)";
+      panelShell.style.overflow = "visible";
+    }
+    if (workspace) {
+      workspace.style.display = "grid";
+      workspace.style.gridTemplateRows = "auto minmax(0, 1fr)";
+      workspace.style.height = "auto";
+      workspace.style.minHeight = "calc(var(--viewport-height) - 2.4rem)";
+      workspace.style.overflow = "visible";
+    }
+    if (workspaceGrid) {
+      workspaceGrid.style.display = "grid";
+      workspaceGrid.style.gridTemplateColumns = "minmax(0, 1fr)";
+      workspaceGrid.style.height = "auto";
+      workspaceGrid.style.minHeight = "0";
+      workspaceGrid.style.overflow = "visible";
+    }
+    if (conversation) {
+      conversation.style.display = "grid";
+      conversation.style.gridTemplateRows = "auto auto auto auto auto minmax(260px, 1fr) auto auto";
+      conversation.style.height = "auto";
+      conversation.style.minHeight = "calc(var(--viewport-height) - 8rem)";
+      conversation.style.maxHeight = "none";
+      conversation.style.overflow = "hidden";
+    }
+    if (channelPanel) {
+      channelPanel.style.display = "none";
+      channelPanel.style.visibility = "hidden";
+      channelPanel.style.opacity = "0";
+      channelPanel.style.pointerEvents = "none";
+      channelPanel.style.transform = "none";
+    }
+    if (inspector) {
+      inspector.style.display = "none";
+      inspector.style.visibility = "hidden";
+      inspector.style.opacity = "0";
+      inspector.style.pointerEvents = "none";
+      inspector.style.transform = "none";
+    }
+    if (topbar) {
+      try {
+        safeScrollIntoView(topbar, { block: "start", behavior: "auto" });
+      } catch (e) {}
+    }
+  }
+
   function ensureFieldVisible(target) {
     if (!target || !(state.compactLayout || state.isMobile)) {
       return;
@@ -2852,6 +2966,7 @@
   function showLogin(message) {
     state.emergencyMode = false;
     document.body.classList.remove("emergency-mode");
+    clearPanelEmergencyLayout();
     setViewMode("login");
     q("login-view").classList.remove("hidden");
     q("panel-view").classList.add("hidden");
@@ -2888,6 +3003,7 @@
   function showPanel() {
     state.emergencyMode = false;
     document.body.classList.remove("emergency-mode");
+    clearPanelEmergencyLayout();
     setViewMode("panel");
     q("login-view").classList.add("hidden");
     q("panel-view").classList.remove("hidden");
@@ -2925,6 +3041,7 @@
       workspaceHeight = Math.round(workspace.getBoundingClientRect().height || 0);
       conversationHeight = Math.round(conversation.getBoundingClientRect().height || 0);
       if (workspaceHeight >= 180 && conversationHeight >= 180) {
+        clearPanelEmergencyLayout();
         return;
       }
       state.focusMode = false;
@@ -2948,9 +3065,16 @@
       syncTransientLayoutState();
       syncBackdrop();
       syncPeekButtons();
+      workspaceHeight = Math.round(workspace.getBoundingClientRect().height || 0);
+      conversationHeight = Math.round(conversation.getBoundingClientRect().height || 0);
+      if (workspaceHeight >= 180 && conversationHeight >= 180) {
+        clearPanelEmergencyLayout();
+        return;
+      }
       if (state.isMobile || state.compactLayout) {
         return;
       }
+      activatePanelEmergencyLayout();
       safeScrollIntoView(topbar, { block: "start", behavior: "auto" });
     }, 90);
   }

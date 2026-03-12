@@ -171,6 +171,34 @@ select {
   display: none !important;
 }
 
+body.panel-emergency #panel-view {
+  overflow-y: auto !important;
+}
+
+body.panel-emergency #panel-shell {
+  grid-template-columns: minmax(0, 1fr) !important;
+  height: auto !important;
+  min-height: calc(var(--viewport-height) - 2rem) !important;
+}
+
+body.panel-emergency #channel-panel,
+body.panel-emergency #inspector-panel,
+body.panel-emergency #btn-sidebar-peek,
+body.panel-emergency #btn-inspector-peek {
+  display: none !important;
+}
+
+body.panel-emergency #workspace,
+body.panel-emergency #workspace-grid {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+body.panel-emergency #conversation-panel {
+  min-height: calc(var(--viewport-height) - 8rem) !important;
+  max-height: none !important;
+}
+
 .glass-card,
 .login-card,
 .info-card,
