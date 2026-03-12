@@ -7,10 +7,110 @@
   <meta name="theme-color" content="#06100c" />
   <meta name="color-scheme" content="dark" />
   <title>Painel Dief</title>
+  <script>
+    (function() {
+      try {
+        var ua = String((navigator && navigator.userAgent) || "").toLowerCase();
+        if (/android|iphone|ipad|ipod|mobile|opera mini|windows phone/.test(ua)) {
+          document.documentElement.className += (document.documentElement.className ? " " : "") + "mobile-ua";
+        }
+      } catch (err) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css?v=1.4.4-nexus18" />
+  <style>
+    html.mobile-ua,
+    html.mobile-ua body {
+      background: #06100c !important;
+      min-height: 100vh;
+      min-height: 100svh;
+      overflow-x: hidden;
+    }
+
+    html.mobile-ua #matrix-bg,
+    html.mobile-ua #noise-layer {
+      display: none !important;
+    }
+
+    html.mobile-ua #login-view,
+    html.mobile-ua #panel-view {
+      position: relative !important;
+      z-index: 4 !important;
+      min-height: 100vh !important;
+      min-height: 100svh !important;
+      width: 100% !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    html.mobile-ua #login-view.hidden,
+    html.mobile-ua #panel-view.hidden {
+      display: none !important;
+    }
+
+    html.mobile-ua #login-view {
+      display: block !important;
+      padding: 0.9rem !important;
+    }
+
+    html.mobile-ua .login-shell {
+      width: 100% !important;
+      max-width: 100% !important;
+      display: block !important;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    html.mobile-ua .login-card {
+      display: block !important;
+      padding: 1rem !important;
+      overflow: visible !important;
+      border-radius: 20px !important;
+      background: #09130f !important;
+      border: 1px solid rgba(123, 255, 0, 0.16) !important;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    html.mobile-ua #login-form,
+    html.mobile-ua .login-download-actions,
+    html.mobile-ua .login-footer {
+      display: grid !important;
+      gap: 0.8rem !important;
+    }
+
+    html.mobile-ua #login-form .btn,
+    html.mobile-ua .login-download-actions .btn,
+    html.mobile-ua .login-download-actions .ghost-pill {
+      width: 100% !important;
+    }
+
+    html.mobile-ua #panel-view {
+      display: block !important;
+      padding: 0.65rem !important;
+      padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    html.mobile-ua #panel-shell,
+    html.mobile-ua #workspace,
+    html.mobile-ua #workspace-grid {
+      display: block !important;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+
+    html.mobile-ua #topbar,
+    html.mobile-ua #conversation-panel,
+    html.mobile-ua #channel-panel,
+    html.mobile-ua #inspector-panel {
+      background: rgba(9, 19, 15, 0.98) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+  </style>
 </head>
 <body data-theme="matrix" class="login-mode">
   <canvas id="matrix-bg" aria-hidden="true"></canvas>

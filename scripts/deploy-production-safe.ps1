@@ -101,6 +101,51 @@ function Wait-RenderDeployLive {
   throw "Deploy do Render nao ficou live dentro do tempo limite."
 }
 
+function Wait-ProductionRestoreMatch {
+  param(
+    [string]$SummaryUrl,
+    [hashtable]$Headers,
+    [string]$ExpectedFingerprint,
+    [int]$MinUsers,
+    [int]$MinRooms,
+    [int]$MinMessages,
+    [int]$MinEvents,
+    [int]$MinPolls,
+    [int]$TimeoutSec
+  )
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  do {
+    try {
+      $summary = Invoke-RestMethod -Method Get -Uri $SummaryUrl -Headers $Headers
+      $users = [int]($summary.summary.users)
+      $rooms = [int]($summary.summary.rooms)
+      $messages = [int]($summary.summary.messages)
+      $events = [int]($summary.summary.events)
+      $polls = [int]($summary.summary.polls)
+      $fingerprint = [string]($summary.summary.dataFingerprint)
+
+      if (
+        $users -ge $MinUsers -and
+        $rooms -ge $MinRooms -and
+        $messages -ge $MinMessages -and
+        $events -ge $MinEvents -and
+        $polls -ge $MinPolls -and
+        (
+          [string]::IsNullOrWhiteSpace($ExpectedFingerprint) -or
+          $fingerprint -eq $ExpectedFingerprint
+        )
+      ) {
+        return $summary
+      }
+    } catch {
+    }
+    Start-Sleep -Seconds 5
+  } while ((Get-Date) -lt $deadline)
+
+  throw "Restore nao apareceu na producao dentro do tempo limite."
+}
+
 Write-Host "[1/6] backup remoto"
 $backupPath = & powershell -ExecutionPolicy Bypass -File $backupScript -BaseUrl $BaseUrl -OpsToken $OpsToken
 if (-not (Test-Path $backupPath)) {
@@ -140,7 +185,17 @@ Wait-ProductionReady -HealthUrl ($BaseUrl.TrimEnd("/") + "/api/health") -ReadyUr
 Write-Host "[5/6] restaurando snapshot apos deploy"
 Invoke-RestMethod -Method Post -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/import") -Headers $opsHeaders -InFile $backupPath -ContentType "application/zip" | Out-Null
 
-$postSummary = Invoke-RestMethod -Method Get -Uri ($BaseUrl.TrimEnd("/") + "/api/ops/summary") -Headers $opsHeaders
+$postSummary = Wait-ProductionRestoreMatch `
+  -SummaryUrl ($BaseUrl.TrimEnd("/") + "/api/ops/summary") `
+  -Headers $opsHeaders `
+  -ExpectedFingerprint $backupFingerprint `
+  -MinUsers $preUsers `
+  -MinRooms $preRooms `
+  -MinMessages $preMessages `
+  -MinEvents $preEvents `
+  -MinPolls $prePolls `
+  -TimeoutSec ([Math]::Min($WaitTimeoutSec, 180))
+
 $postUsers = [int]($postSummary.summary.users)
 $postRooms = [int]($postSummary.summary.rooms)
 $postMessages = [int]($postSummary.summary.messages)
