@@ -34,6 +34,7 @@ $productionSmokeArgs = @(
 )
 if (-not [string]::IsNullOrWhiteSpace($OwnerPassword)) {
   $env:PAINEL_DIEF_OWNER_PASSWORD = $OwnerPassword
+  $productionSmokeArgs += @("-Password", $OwnerPassword)
 }
 & powershell @productionSmokeArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

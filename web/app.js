@@ -154,7 +154,8 @@
     desktopSidebarCollapsed: false,
     desktopInspectorCollapsed: false,
     lastToastKey: "",
-    lastToastAt: 0
+    lastToastAt: 0,
+    notificationCenterOpen: false
   };
 
   function readStoredSessionId() {
@@ -2718,19 +2719,23 @@
     } catch (e) {}
   }
 
-  function pushActivity(text, tone) {
+  function pushActivity(text, tone, meta) {
     state.activity.unshift({
+      id: Date.now() + "-" + Math.round(Math.random() * 100000),
       text: text,
       tone: tone || "ok",
-      at: new Date().toISOString()
+      at: new Date().toISOString(),
+      roomId: meta && meta.roomId ? Number(meta.roomId) : 0,
+      messageId: meta && meta.messageId ? Number(meta.messageId) : 0
     });
-    if (state.activity.length > 28) {
-      state.activity = state.activity.slice(0, 28);
+    if (state.activity.length > 40) {
+      state.activity = state.activity.slice(0, 40);
     }
     renderActivity();
+    renderNotificationCenter();
   }
 
-  function toast(text, tone) {
+  function toast(text, tone, meta) {
     var stack = q("toast-stack");
     var icon = "\uD83D\uDCE1";
     var label = "Painel Dief";
@@ -2771,13 +2776,14 @@
     item.addEventListener("click", function(event) {
       var close = event.target && event.target.closest ? event.target.closest(".toast-close") : null;
       if (!close) {
+        openNotificationCenter();
         return;
       }
       if (item.parentNode) {
         item.parentNode.removeChild(item);
       }
     });
-    pushActivity(label + ". " + text, tone || "ok");
+    pushActivity(label + ". " + text, tone || "ok", meta);
     playTone(tone || "ok");
     if (tone === "warn") {
       maybeVibrate([22, 58, 22]);
@@ -2869,6 +2875,99 @@
 
   function requestNotificationsPermission() {
     syncBrowserNotifyButton();
+  }
+
+  function activityFeedItems(limit) {
+    var latestItems = Object.keys(state.latestByRoom || {}).map(function(roomId) {
+      var message = state.latestByRoom[roomId];
+      var room = roomById(roomId);
+      if (!message || !room) {
+        return null;
+      }
+      return {
+        id: "room-" + roomId + "-" + Number(message.id || 0),
+        at: message.createdAt,
+        tone: room.scope === "dm" ? "ok" : "warn",
+        roomId: Number(room.id || 0),
+        messageId: Number(message.id || 0),
+        text: displayRoomName(room) + " // " + (message.authorName || "alguem") + " // " + ((message.body || (message.attachment ? message.attachment.name : "sem texto")).slice(0, 96))
+      };
+    }).filter(Boolean);
+    var upcomingEvent = (state.events || []).slice(0, 2).map(function(event) {
+      return {
+        id: "event-" + Number(event.id || 0),
+        at: event.startsAt,
+        tone: "ok",
+        roomId: Number(event.roomId || 0),
+        messageId: 0,
+        text: "Agenda // " + event.title + " // " + formatRelative(event.startsAt)
+      };
+    });
+    return latestItems
+      .concat(upcomingEvent, state.activity || [])
+      .filter(Boolean)
+      .sort(function(a, b) {
+        return new Date(b.at).getTime() - new Date(a.at).getTime();
+      })
+      .slice(0, Math.max(1, Number(limit || 8)));
+  }
+
+  function openNotificationCenter() {
+    if (state.isMobile) {
+      closeSidebar();
+      closeInspector();
+      state.utilityStripCollapsed = true;
+      syncUtilityStripUI();
+    }
+    renderNotificationCenter();
+    q("notify-modal").classList.remove("hidden");
+    q("notify-modal").scrollTop = 0;
+    state.notificationCenterOpen = true;
+    syncTransientLayoutState();
+  }
+
+  function clearNotificationCenter() {
+    state.activity = [];
+    renderActivity();
+    renderNotificationCenter();
+    playTone("ok");
+  }
+
+  function syncNotificationCenterButton() {
+    var button = q("btn-notify-center");
+    var count = activityFeedItems(12).length;
+    if (!button) {
+      return;
+    }
+    button.textContent = count ? ("Avisos " + count) : "Avisos";
+    button.classList.toggle("active", count > 0);
+  }
+
+  function renderNotificationCenter() {
+    var list = q("notification-list");
+    var items = activityFeedItems(24);
+    if (!list) {
+      return;
+    }
+    if (!items.length) {
+      list.innerHTML = "<div class='empty-state'>Sem alerta recente. Quando a base se mexer, tudo aparece aqui.</div>";
+      syncNotificationCenterButton();
+      return;
+    }
+    list.innerHTML = items.map(function(item) {
+      var jumpButton = item.roomId
+        ? "<button class='btn btn-ghost' type='button' data-action='notification-jump' data-room-id='" + Number(item.roomId) + "'" + (item.messageId ? " data-message-id='" + Number(item.messageId) + "'" : "") + ">Abrir</button>"
+        : "";
+      return "<article class='notification-card " + esc(item.tone || "ok") + "'>" +
+        "<div class='notification-card-head'>" +
+          "<strong>" + esc(formatDateTime(item.at)) + "</strong>" +
+          "<span class='ghost-pill'>" + esc(item.tone || "ok") + "</span>" +
+        "</div>" +
+        "<p>" + esc(item.text || "Sem detalhe.") + "</p>" +
+        (jumpButton ? "<div class='inline-row notification-card-actions'>" + jumpButton + "</div>" : "") +
+      "</article>";
+    }).join("");
+    syncNotificationCenterButton();
   }
 
   function handleBrowserNotifyToggle() {
@@ -3287,6 +3386,7 @@
     renderReplyChip();
     renderEditChip();
     renderActivity();
+    renderNotificationCenter();
     renderEvents();
     renderMoments();
     renderFiles();
@@ -4518,31 +4618,11 @@
 
   function renderActivity() {
     var feed = q("activity-feed");
-    var latestItems = Object.keys(state.latestByRoom || {}).map(function(roomId) {
-      var message = state.latestByRoom[roomId];
-      var room = roomById(roomId);
-      if (!message || !room) {
-        return null;
-      }
-      return {
-        at: message.createdAt,
-        tone: room.scope === "dm" ? "ok" : "warn",
-        text: displayRoomName(room) + " // " + (message.authorName || "alguem") + " // " + ((message.body || (message.attachment ? message.attachment.name : "sem texto")).slice(0, 96))
-      };
-    }).filter(Boolean).sort(function(a, b) {
-      return new Date(b.at).getTime() - new Date(a.at).getTime();
-    }).slice(0, 5);
-    var upcomingEvent = (state.events || []).slice(0, 1).map(function(event) {
-      return {
-        at: event.startsAt,
-        tone: "ok",
-        text: "Agenda // " + event.title + " // " + formatRelative(event.startsAt)
-      };
-    });
-    var items = latestItems.concat(upcomingEvent, state.activity || []).slice(0, 8);
+    var items = activityFeedItems(8);
     feed.innerHTML = "";
     if (!items.length) {
       feed.innerHTML = "<div class='empty-state'>As notificacoes vao aparecer aqui.</div>";
+      syncNotificationCenterButton();
       return;
     }
     items.forEach(function(item) {
@@ -4553,6 +4633,7 @@
         "<span>" + esc(item.text) + "</span>";
       feed.appendChild(card);
     });
+    syncNotificationCenterButton();
   }
 
   function renderEventRoomOptions() {
@@ -6164,6 +6245,9 @@
     if (id === "member-modal") {
       state.selectedMember = null;
     }
+    if (id === "notify-modal") {
+      state.notificationCenterOpen = false;
+    }
     if (id === "media-modal") {
       state.mediaPreview = null;
     }
@@ -7075,6 +7159,8 @@
     q("btn-profile-utility").addEventListener("click", openProfileModal);
     q("btn-open-app").addEventListener("click", handleOpenAppShortcut);
     q("btn-guide").addEventListener("click", function() { openGuideModal(true); });
+    q("btn-notify-center").addEventListener("click", openNotificationCenter);
+    q("btn-notify-clear").addEventListener("click", clearNotificationCenter);
     q("btn-focus-mode").addEventListener("click", toggleFocusMode);
     q("btn-context-toggle").addEventListener("click", toggleChatContext);
     q("btn-utility-toggle").addEventListener("click", toggleUtilityStrip);
@@ -7355,6 +7441,7 @@
         closeModal("unlock-modal");
         closeModal("media-modal");
         closeModal("guide-modal");
+        closeModal("notify-modal");
         closeModal("app-center-modal");
         closeModal("download-access-modal");
         closeModal("join-request-modal");
@@ -7387,6 +7474,9 @@
       }
       if (target === q("guide-modal")) {
         closeModal("guide-modal");
+      }
+      if (target === q("notify-modal")) {
+        closeModal("notify-modal");
       }
       if (target === q("app-center-modal")) {
         closeModal("app-center-modal");
@@ -7463,6 +7553,13 @@
         selectRoom(Number(target.getAttribute("data-room-id")));
       } else if (action === "jump-message") {
         jumpToMessage(Number(target.getAttribute("data-room-id")), Number(target.getAttribute("data-message-id")));
+      } else if (action === "notification-jump") {
+        closeModal("notify-modal");
+        if (target.getAttribute("data-message-id")) {
+          jumpToMessage(Number(target.getAttribute("data-room-id")), Number(target.getAttribute("data-message-id")));
+        } else {
+          selectRoom(Number(target.getAttribute("data-room-id")));
+        }
       } else if (action === "jump-unread") {
         jumpToMessage(Number(target.getAttribute("data-room-id")), Number(target.getAttribute("data-message-id")));
       } else if (action === "focus-composer") {

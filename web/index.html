@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=1.4.4-nexus19" />
+  <link rel="stylesheet" href="/styles.css?v=1.4.4-nexus20" />
   <style>
     html.mobile-ua,
     html.mobile-ua body {
@@ -258,6 +258,7 @@
               <button class="btn btn-ghost" type="button" data-action="open-inspector-section" data-section="search">Busca</button>
               <button id="btn-inspector-toggle" class="btn btn-ghost" type="button">Apoio</button>
               <button id="btn-guide" class="btn btn-ghost" type="button">Guia</button>
+              <button id="btn-notify-center" class="btn btn-ghost" type="button">Avisos</button>
               <button id="btn-browser-notify" class="btn btn-ghost" type="button">Push off</button>
               <button id="btn-audio-toggle" class="btn btn-ghost" type="button">Som on</button>
             </div>
@@ -867,6 +868,20 @@
     </div>
   </div>
 
+  <div id="notify-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card narrow notify-card">
+      <div class="modal-head">
+        <h3>Central de avisos</h3>
+        <div class="inline-row">
+          <button id="btn-notify-clear" class="btn btn-ghost" type="button">Limpar</button>
+          <button data-close-modal="notify-modal" class="btn btn-ghost" type="button">Fechar</button>
+        </div>
+      </div>
+      <p class="section-summary">Alertas recentes, atividade do painel e avisos da base ficam aqui para tu revisar sem perder nada no meio do caos.</p>
+      <div id="notification-list" class="notification-list"></div>
+    </div>
+  </div>
+
   <div id="app-center-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-card app-center-card">
       <div class="modal-head">
@@ -986,6 +1001,6 @@
   <input id="avatar-upload-input" type="file" accept="image/*" hidden />
   <input id="banner-upload-input" type="file" accept="image/*" hidden />
 
-  <script src="/app.js?v=1.4.4-nexus19"></script>
+  <script src="/app.js?v=1.4.4-nexus20"></script>
 </body>
 </html>
